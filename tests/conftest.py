@@ -34,8 +34,12 @@ os.environ.setdefault("FMCP_SECRET_ENCRYPTION_KEY", "")
 import httpx  # noqa: E402
 import pytest  # noqa: E402
 
+from app.fanmoot import cache  # noqa: E402
+from app.fanmoot import client as fanmoot_client  # noqa: E402
+from app.fanmoot.names import Catalogue, load_catalogue  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.settings import Settings, get_settings, reset_settings_cache  # noqa: E402
+from tests.replay import Replay  # noqa: E402
 
 
 @pytest.fixture
@@ -49,6 +53,30 @@ def _clear_settings_cache() -> Iterator[None]:
     next test does not inherit it."""
     yield
     reset_settings_cache()
+
+
+@pytest.fixture
+def replay() -> Iterator[Replay]:
+    """The recorded Fanmoot, installed as the process-wide client.
+
+    Both the client and the cache are reset around every test: a cache that
+    survived into the next test would make an assertion about a network call
+    depend on which tests ran first.
+    """
+    cache.reset_cache()
+    tape = Replay.from_fixtures()
+    fanmoot_client.set_client(
+        fanmoot_client.FanmootClient(base_url="https://fanmoot.test", transport=tape.transport())
+    )
+    yield tape
+    fanmoot_client.set_client(None)
+    cache.reset_cache()
+
+
+@pytest.fixture
+async def catalogue(replay: Replay) -> Catalogue:
+    """Every club and competition, built from the recorded catalogue."""
+    return await load_catalogue()
 
 
 @pytest.fixture

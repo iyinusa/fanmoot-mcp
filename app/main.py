@@ -19,6 +19,8 @@ from fastapi import FastAPI
 
 from app import __version__, health
 from app.db import dispose_engine
+from app.fanmoot import cache as fanmoot_cache
+from app.fanmoot.client import close_client, get_client
 from app.logging_config import configure_logging, get_logger
 from app.middleware import RequestIdMiddleware
 from app.settings import Settings, get_settings
@@ -28,6 +30,12 @@ from app.settings import Settings, get_settings
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.env)
+
+    # One httpx client for the process, built here rather than on the first
+    # tool call: the connection pool is most of the latency budget (HAD-6), and
+    # a pool created mid-turn has already spent it.
+    get_client()
+    fanmoot_cache.reset_cache()
 
     log = get_logger("startup")
     log.info(
@@ -43,6 +51,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     yield
 
+    await close_client()
     await dispose_engine()
     get_logger("shutdown").info("mcp_server_stopping")
 

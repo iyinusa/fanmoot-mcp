@@ -1,0 +1,38 @@
+[
+ {
+  "match": {
+   "away": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "away_score": 0,
+   "home": {
+    "badge_path": "/static/badges/premier-league/brighton-hove-albion.webp",
+    "name": "Brighton & Hove Albion",
+    "primary_color": "#0057B8",
+    "short_name": "Brighton",
+    "slug": "brighton-hove-albion"
+   },
+   "home_score": 3,
+   "id": "dd472da4-8efc-42be-9f7e-188a57aec488",
+   "kickoff_at": "2026-09-19T14:00:00Z",
+   "league": "Premier League",
+   "league_slug": "premier-league",
+   "path": "/matches/premier-league/2026-27/brighton-hove-albion-vs-arsenal-2026-09-19",
+   "status": "finished"
+  },
+  "prediction": {
+   "away_score": 2,
+   "card_url": "/og/predictions/d4e3a6f8.png",
+   "exact": false,
+   "home_score": 1,
+   "id": "d4e3a6f8-9110-4c3d-8055-7e1f2c9b3342",
+   "match_id": "dd472da4-8efc-42be-9f7e-188a57aec488",
+   "points": 3,
+   "updated_at": "2026-09-22T16:45:11Z"
+  }
+ }
+]

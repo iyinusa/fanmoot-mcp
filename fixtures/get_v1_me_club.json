@@ -1,0 +1,55 @@
+{
+ "club": {
+  "badge_path": "/static/badges/premier-league/arsenal.webp",
+  "competitions": [
+   {
+    "country_code": null,
+    "id": "5b648f9a-5d30-4333-af6b-d20da95cea35",
+    "is_active": true,
+    "kind": "continental",
+    "logo_path": "/static/badges/leagues/uefa-champions-league.webp",
+    "name": "UEFA Champions League",
+    "short_name": "Champions League",
+    "slug": "uefa-champions-league",
+    "tier": null
+   },
+   {
+    "country_code": "GB-ENG",
+    "id": "696fa77f-102b-46a3-bab1-8f0e3def7788",
+    "is_active": true,
+    "kind": "cup",
+    "logo_path": "/static/badges/leagues/fa-cup.webp",
+    "name": "FA Cup",
+    "short_name": "FA Cup",
+    "slug": "fa-cup",
+    "tier": null
+   }
+  ],
+  "country_code": "GB-ENG",
+  "founded": 1886,
+  "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+  "is_active": true,
+  "league": {
+   "country_code": "GB-ENG",
+   "id": "52eddc50-e916-4fc7-ae6d-9a64a919597e",
+   "is_active": true,
+   "kind": "domestic",
+   "logo_path": "/static/badges/leagues/premier-league.webp",
+   "name": "Premier League",
+   "short_name": "Premier League",
+   "slug": "premier-league",
+   "tier": 1
+  },
+  "member_count": 2,
+  "name": "Arsenal",
+  "nickname": "The Gunners",
+  "primary_color": "#EF0107",
+  "secondary_color": "#FFFFFF",
+  "short_name": "Arsenal",
+  "slug": "arsenal",
+  "stadium": "Emirates Stadium"
+ },
+ "joined_at": "2026-08-01T09:05:00Z",
+ "season": "2026-27",
+ "tenure_days": 52
+}

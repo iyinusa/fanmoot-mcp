@@ -39,6 +39,23 @@ curl -s localhost:8080/healthz | python3 -m json.tool
 `make check` is what CI runs — `ruff`, `mypy --strict`, `pytest`. A milestone
 task is ticked only when it passes.
 
+## Tests run offline, against a recorded Fanmoot
+
+`fixtures/` holds real `/v1` responses captured from production by `make
+record`. The suite drives the actual client — real timeouts, real retry policy,
+real error mapping — against a transport that replays them, so it is fast,
+deterministic and still asserting against shapes the API genuinely produced.
+Nothing in `make check` touches the network or needs a database.
+
+```bash
+make record           # re-capture (needs network); writes fixtures/manifest.json
+make record ARGS=-v   # …and print what each call returned
+```
+
+The authenticated endpoints are not recorded live — doing so would write a real
+fan's handle and email into this repository — so their fixtures are hand-built
+from Fanmoot's own schemas and marked `synthetic` in the manifest.
+
 ## Connect a client
 
 *(Arrives with `S2`. The endpoint is `https://mcp.fanmoot.com/mcp`; it speaks

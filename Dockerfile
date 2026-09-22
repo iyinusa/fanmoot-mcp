@@ -34,6 +34,10 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 COPY tests ./tests
+# The recorded /v1 corpus the suite replays (HAD-14). Copied because `tests`
+# is copied: a test image whose fixtures were left outside it fails on import
+# rather than on an assertion, which is a confusing way to learn they moved.
+COPY fixtures ./fixtures
 
 # Drop privileges. This process writes to nothing on disk — its only state is
 # in PostgreSQL — so it has no business running as root, and leaving the code

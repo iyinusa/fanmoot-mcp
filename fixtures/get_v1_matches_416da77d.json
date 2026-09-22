@@ -1,0 +1,207 @@
+{
+ "items": [
+  {
+   "away": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "away_score": 0,
+   "clock": null,
+   "home": {
+    "badge_path": "/static/badges/premier-league/brighton-hove-albion.webp",
+    "id": "0f831c05-0dc7-4922-9144-77d7a1b328b4",
+    "name": "Brighton & Hove Albion",
+    "primary_color": "#0057B8",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Brighton",
+    "slug": "brighton-hove-albion"
+   },
+   "home_score": 3,
+   "id": "dd472da4-8efc-42be-9f7e-188a57aec488",
+   "kickoff_at": "2026-09-19T14:00:00Z",
+   "league": {
+    "id": "52eddc50-e916-4fc7-ae6d-9a64a919597e",
+    "logo_path": "/static/badges/leagues/premier-league.webp",
+    "name": "Premier League",
+    "short_name": "Premier League",
+    "slug": "premier-league"
+   },
+   "minute": null,
+   "moot_count": 0,
+   "round": "Regular Season - 5",
+   "score_state": "confirmed",
+   "season": "2026-27",
+   "status": "finished",
+   "url": "/matches/premier-league/2026-27/brighton-hove-albion-vs-arsenal-2026-09-19",
+   "venue": "American Express Stadium"
+  },
+  {
+   "away": {
+    "badge_path": "/static/badges/premier-league/leeds-united.webp",
+    "id": "85124f2f-e600-43bd-8e3a-e00f08de0f0a",
+    "name": "Leeds United",
+    "primary_color": "#FFFFFF",
+    "secondary_color": "#1D428A",
+    "short_name": "Leeds",
+    "slug": "leeds-united"
+   },
+   "away_score": null,
+   "clock": null,
+   "home": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "home_score": null,
+   "id": "3dfdc388-ba2a-4bfe-b738-fc66b0b880a1",
+   "kickoff_at": "2026-10-10T11:30:00Z",
+   "league": {
+    "id": "52eddc50-e916-4fc7-ae6d-9a64a919597e",
+    "logo_path": "/static/badges/leagues/premier-league.webp",
+    "name": "Premier League",
+    "short_name": "Premier League",
+    "slug": "premier-league"
+   },
+   "minute": null,
+   "moot_count": 0,
+   "round": "Matchweek 6",
+   "score_state": "assumed",
+   "season": "2026-27",
+   "status": "scheduled",
+   "url": "/matches/premier-league/2026-27/arsenal-vs-leeds-united-2026-10-10",
+   "venue": null
+  },
+  {
+   "away": {
+    "badge_path": "/static/badges/ligue-1/lille.webp",
+    "id": "0009c08d-0167-4f74-b323-ad51dca64e1b",
+    "name": "Lille",
+    "primary_color": "#E01E13",
+    "secondary_color": "#003865",
+    "short_name": "Lille",
+    "slug": "lille"
+   },
+   "away_score": null,
+   "clock": null,
+   "home": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "home_score": null,
+   "id": "d3788b71-82b8-429b-807f-7c91aa645af4",
+   "kickoff_at": "2026-10-13T19:00:00Z",
+   "league": {
+    "id": "5b648f9a-5d30-4333-af6b-d20da95cea35",
+    "logo_path": "/static/badges/leagues/uefa-champions-league.webp",
+    "name": "UEFA Champions League",
+    "short_name": "Champions League",
+    "slug": "uefa-champions-league"
+   },
+   "minute": null,
+   "moot_count": 0,
+   "round": null,
+   "score_state": "assumed",
+   "season": "2026-27",
+   "status": "scheduled",
+   "url": "/matches/uefa-champions-league/2026-27/arsenal-vs-lille-2026-10-13",
+   "venue": null
+  },
+  {
+   "away": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "away_score": null,
+   "clock": null,
+   "home": {
+    "badge_path": "/static/badges/premier-league/nottingham-forest.webp",
+    "id": "8d482b25-9d7e-496c-aa02-51c48fc96947",
+    "name": "Nottingham Forest",
+    "primary_color": "#DD0000",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Forest",
+    "slug": "nottingham-forest"
+   },
+   "home_score": null,
+   "id": "1760ded3-6a69-4063-bb22-795d1ec4dc22",
+   "kickoff_at": "2026-10-18T15:30:00Z",
+   "league": {
+    "id": "52eddc50-e916-4fc7-ae6d-9a64a919597e",
+    "logo_path": "/static/badges/leagues/premier-league.webp",
+    "name": "Premier League",
+    "short_name": "Premier League",
+    "slug": "premier-league"
+   },
+   "minute": null,
+   "moot_count": 0,
+   "round": null,
+   "score_state": "assumed",
+   "season": "2026-27",
+   "status": "scheduled",
+   "url": "/matches/premier-league/2026-27/nottingham-forest-vs-arsenal-2026-10-18",
+   "venue": "City Ground, Nottingham"
+  },
+  {
+   "away": {
+    "badge_path": "/static/badges/premier-league/everton.webp",
+    "id": "bd51915b-1bed-4a89-94c9-1d358427d320",
+    "name": "Everton",
+    "primary_color": "#003399",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Everton",
+    "slug": "everton"
+   },
+   "away_score": null,
+   "clock": null,
+   "home": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "home_score": null,
+   "id": "af43dbf2-0a57-4c09-be30-691061eb63e3",
+   "kickoff_at": "2026-10-24T14:00:00Z",
+   "league": {
+    "id": "52eddc50-e916-4fc7-ae6d-9a64a919597e",
+    "logo_path": "/static/badges/leagues/premier-league.webp",
+    "name": "Premier League",
+    "short_name": "Premier League",
+    "slug": "premier-league"
+   },
+   "minute": null,
+   "moot_count": 0,
+   "round": null,
+   "score_state": "assumed",
+   "season": "2026-27",
+   "status": "scheduled",
+   "url": "/matches/premier-league/2026-27/arsenal-vs-everton-2026-10-24",
+   "venue": null
+  }
+ ],
+ "page": 1,
+ "pages": 1,
+ "total": 5
+}

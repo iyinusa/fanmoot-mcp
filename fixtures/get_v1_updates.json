@@ -1,0 +1,427 @@
+{
+ "items": [
+  {
+   "at": "2026-09-22T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/la-liga/barcelona.webp",
+    "id": "b7fe40bb-995f-4caa-bca1-17122dfe0f9d",
+    "name": "Barcelona",
+    "primary_color": "#A50044",
+    "secondary_color": "#004D98",
+    "short_name": "Bar\u00e7a",
+    "slug": "barcelona"
+   },
+   "domain": "getfootballnewsspain.com",
+   "headline": "Barcelona star's new contract to feature massive release clause - Get Spanish Football News",
+   "id": "ed7abccf-397e-4117-83e4-b89254ddea26",
+   "image_url": "/media/links/95/7d/957d8690c1c8453cb9f4aef1c0752349.webp",
+   "moot_short_id": "sBUE6OlITD",
+   "moot_url": "/m/sBUE6OlITD",
+   "source_name": "Get Spanish Football News",
+   "summary": "The new contract set to be handed to Barcelona star Marc Bernal will feature a release clause representative of his stellar reputation in Catalunya's capital.",
+   "url": "https://getfootballnewsspain.com/barcelona-stars-new-contract-to-feature-massive-release-clause/"
+  },
+  {
+   "at": "2026-09-21T06:47:00Z",
+   "club": {
+    "badge_path": "/static/badges/serie-a/roma.webp",
+    "id": "fb39d9e4-f941-461c-a887-6b6af337f70c",
+    "name": "Roma",
+    "primary_color": "#8E1F2F",
+    "secondary_color": "#F0BC42",
+    "short_name": "Roma",
+    "slug": "roma"
+   },
+   "domain": "thelaziali.com",
+   "headline": "Mayor Reveals Plans to Hold Major Events at Roma & Lazio Stadiums",
+   "id": "1b44f149-3428-42ce-a62f-d6c77ffe0d16",
+   "image_url": "/media/links/1b/a7/1ba722e739b84156978f964ea186e9b3.webp",
+   "moot_short_id": "F856uhjabL",
+   "moot_url": "/m/F856uhjabL",
+   "source_name": "The Laziali",
+   "summary": "The Mayor of Rome, Roberto Gualtieri, confirms that Roma and Lazio are moving forward with their new stadium plans.",
+   "url": "https://thelaziali.com/2026/09/21/mayor-reveals-plans-to-hold-major-events-at-roma-lazio-stadiums/"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/la-liga/villarreal.webp",
+    "id": "f2f5eb87-ced1-4cba-a465-61c54a1242fb",
+    "name": "Villarreal",
+    "primary_color": "#FFE667",
+    "secondary_color": "#005187",
+    "short_name": "Villarreal",
+    "slug": "villarreal"
+   },
+   "domain": "levanteud.com",
+   "headline": "News",
+   "id": "d9431f74-3341-40a8-977c-a559ec35f14c",
+   "image_url": "/media/links/10/f4/10f4275b49194894a75d54d8900ccd19.webp",
+   "moot_short_id": "HU6yREc6mJ",
+   "moot_url": "/m/HU6yREc6mJ",
+   "source_name": "levanteud.com",
+   "summary": "Find out more about News - Levante UD",
+   "url": "https://www.levanteud.com/en/info/levante-ud-falls-in-vila-real-after-fighting-until-the-end"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/ligue-1/paris-saint-germain.webp",
+    "id": "0c95ca8f-c54c-4ce3-8709-44aab20a6f05",
+    "name": "Paris Saint-Germain",
+    "primary_color": "#004170",
+    "secondary_color": "#DA291C",
+    "short_name": "PSG",
+    "slug": "paris-saint-germain"
+   },
+   "domain": "foxsports.com",
+   "headline": "Paris SG Team News - Soccer",
+   "id": "5f1b3918-04f5-42f7-b0fa-b70057b9a819",
+   "image_url": "/media/links/87/15/87150b106b51404a94b42f3b343d4658.webp",
+   "moot_short_id": "B3YyN2u0O6",
+   "moot_url": "/m/B3YyN2u0O6",
+   "source_name": "FOX Sports",
+   "summary": "View the latest in Paris SG Soccer team news here. Trending news, game recaps, highlights, player information, rumors, videos and more from FOX Sports.",
+   "url": "https://www.foxsports.com/soccer/paris-sg-team-news"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "domain": "justarsenal.com",
+   "headline": "\u201cWe have to say sorry\u201d, Guimar\u00e3es apologises to Arsenal fans after Brighton nightmare - Just Arsenal News",
+   "id": "3154294a-9b28-4e63-b0ec-22822a312efd",
+   "image_url": "/media/links/31/e1/31e1b6d87f684ab2a95ae51fa2f69d9a.webp",
+   "moot_short_id": "2YGjogZaBW",
+   "moot_url": "/m/2YGjogZaBW",
+   "source_name": "Just Arsenal News",
+   "summary": "Bruno Guimar\u00e3es apologises to Arsenal fans after the 3-0 Brighton defeat and admits the Gunners\u2019 performance was simply unacceptable.",
+   "url": "https://justarsenal.com/we-have-to-say-sorry-guimaraes-apologises-to-arsenal-fans-after-brighton-nightmare/"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/ligue-1/paris-saint-germain.webp",
+    "id": "0c95ca8f-c54c-4ce3-8709-44aab20a6f05",
+    "name": "Paris Saint-Germain",
+    "primary_color": "#004170",
+    "secondary_color": "#DA291C",
+    "short_name": "PSG",
+    "slug": "paris-saint-germain"
+   },
+   "domain": "sport.tempo.co",
+   "headline": "Berita Terkini, Berita Hari Ini Indonesia dan Dunia | tempo.co",
+   "id": "371b5db7-2ec8-4cef-ab4f-f19620417403",
+   "image_url": null,
+   "moot_short_id": "z0VWTnIQHK",
+   "moot_url": "/m/z0VWTnIQHK",
+   "source_name": "tempo.co",
+   "summary": "Berita terbaru, akurat dan terpercaya di Tempo.co. Baca di sini biar kamu gak ketinggalan informasi terbaru seputar Politik, Hukum, Ekonomi, Teknologi, dan Lainnya.",
+   "url": "https://sport.tempo.co/read/1922295/psg-beat-10-man-marseille-2-1-in-french-ligue-1"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/manchester-city.webp",
+    "id": "0a60d06b-7174-408c-9980-0040c3880cab",
+    "name": "Manchester City",
+    "primary_color": "#6CABDD",
+    "secondary_color": "#1C2C5B",
+    "short_name": "Man City",
+    "slug": "manchester-city"
+   },
+   "domain": "foxsports.com",
+   "headline": "FOX Sports News, Scores, Schedules, Odds, Shows, Streams & Videos",
+   "id": "49bc4cd1-312a-40e1-84b9-8fa398c07d20",
+   "image_url": "/media/links/54/59/5459edc2837845e884785fa5922bd428.webp",
+   "moot_short_id": null,
+   "moot_url": null,
+   "source_name": "FOX Sports",
+   "summary": "Watch FOX Sports and view live scores, odds, team news, player news, streams, videos, stats, standings & schedules covering NFL, MLB, NASCAR, INDYCAR, NBA, NHL, college sports & more!",
+   "url": "https://www.foxsports.com/"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/chelsea.webp",
+    "id": "a79dea43-1547-4cf8-9515-241c2c320738",
+    "name": "Chelsea",
+    "primary_color": "#034694",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Chelsea",
+    "slug": "chelsea"
+   },
+   "domain": "the4thofficial.net",
+   "headline": "Chelsea are keen on recruiting this Crystal Palace midfielder",
+   "id": "b9d80547-1933-4796-95a4-97f49e77dc10",
+   "image_url": "/media/links/79/8f/798fdef562504d3688f793a407d628d8.webp",
+   "moot_short_id": "t7SDadTaar",
+   "moot_url": "/m/t7SDadTaar",
+   "source_name": "The 4th Official - A view from the sideline",
+   "summary": "Chelsea are keen on recruiting Crystal Palace midfielder Adam Wharton as they look to strengthen their squad next year.",
+   "url": "https://the4thofficial.net/2026/09/chelsea-are-keen-on-recruiting-this-crystal-palace-midfielder-good-fit-for-alonso/"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/chelsea.webp",
+    "id": "a79dea43-1547-4cf8-9515-241c2c320738",
+    "name": "Chelsea",
+    "primary_color": "#034694",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Chelsea",
+    "slug": "chelsea"
+   },
+   "domain": "chelseafconline.com",
+   "headline": "Chelsea Handed Boost As Ecuador Omit Moises Caicedo From Asian Tour - Chelsea FC Online",
+   "id": "df5f5abc-6b5e-4677-8fab-d9ab183a8c6b",
+   "image_url": "/media/links/b5/9f/b59f7c08c84e45a0ac040d1353fb1b32.webp",
+   "moot_short_id": "swfe3P6UZQ",
+   "moot_url": "/m/swfe3P6UZQ",
+   "source_name": "Chelsea FC Online",
+   "summary": "Moises Caicedo has been left out of Marcelo Gallardo's first Ecuador squad and will recover at Cobham throughout the international break.",
+   "url": "https://www.chelseafconline.com/chelsea-handed-boost-as-ecuador-omit-moises-caicedo-from-asian-tour"
+  },
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/la-liga/barcelona.webp",
+    "id": "b7fe40bb-995f-4caa-bca1-17122dfe0f9d",
+    "name": "Barcelona",
+    "primary_color": "#A50044",
+    "secondary_color": "#004D98",
+    "short_name": "Bar\u00e7a",
+    "slug": "barcelona"
+   },
+   "domain": "fcbarcelona.com",
+   "headline": "Official FC Barcelona Website - Bar\u00e7a | FCBarcelona.com | FC Barcelona",
+   "id": "44fb0b3d-1a0a-4e9e-bb7d-861523bbed18",
+   "image_url": null,
+   "moot_short_id": "e8CqoTE5Wb",
+   "moot_url": "/m/e8CqoTE5Wb",
+   "source_name": "Bar\u00e7a",
+   "summary": "The latest news from FC Barcelona \u2014 schedule, tickets, injury updates, player info, video, match stats and highlights, standings, official shop & more",
+   "url": "https://www.fcbarcelona.com/en/news/4134887/raphinha-on-golden-streak"
+  },
+  {
+   "at": "2026-09-20T22:45:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "domain": "justarsenal.com",
+   "headline": "Just Arsenal News",
+   "id": "a6c96545-22e5-4498-91ac-04d0b4dad0a2",
+   "image_url": null,
+   "moot_short_id": "QotZlp2Xrc",
+   "moot_url": "/m/QotZlp2Xrc",
+   "source_name": "Just Arsenal News",
+   "summary": "Just Arsenal News, Transfer Rumours And Discussion about all matters relating to Arsenal Football Club",
+   "url": "https://www.justarsenal.com/"
+  },
+  {
+   "at": "2026-09-20T17:41:00Z",
+   "club": {
+    "badge_path": "/static/badges/la-liga/real-madrid.webp",
+    "id": "af96d819-abc1-46a1-8c63-b2402911df05",
+    "name": "Real Madrid",
+    "primary_color": "#FEBE10",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Real Madrid",
+    "slug": "real-madrid"
+   },
+   "domain": "newsnow.co.uk",
+   "headline": "Real Madrid News | Los Merengues Transfer News & Rumours",
+   "id": "97fef1c1-9e82-4895-8e00-f95baa4f88a5",
+   "image_url": null,
+   "moot_short_id": "GbkMsZOkMx",
+   "moot_url": "/m/GbkMsZOkMx",
+   "source_name": "NewsNow",
+   "summary": "Latest news on Real Madrid, providing comprehensive coverage of Los Blancos, including transfers, matches, La Liga, Champions League, club history and more",
+   "url": "https://www.newsnow.co.uk/h/Sport/Football/La+Liga/Real+Madrid"
+  },
+  {
+   "at": "2026-09-20T03:53:00Z",
+   "club": {
+    "badge_path": "/static/badges/super-lig/galatasaray.webp",
+    "id": "850cbabc-636d-4031-9fc2-063f49bc0f2f",
+    "name": "Galatasaray",
+    "primary_color": "#FBBA1A",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Galatasaray",
+    "slug": "galatasaray"
+   },
+   "domain": "straitstimes.com",
+   "headline": "Salah hat-trick fires Trabzonspor to 4-0 rout of Galatasaray",
+   "id": "c5ea83f5-ce1a-4f9f-804a-9d9314966493",
+   "image_url": "/media/links/c8/a9/c8a9e855c41a4f58a0e886e7062e0301.webp",
+   "moot_short_id": "Zte0B764r5",
+   "moot_url": "/m/Zte0B764r5",
+   "source_name": "The Straits Times",
+   "summary": "Sept 19 - Mohamed Salah scored a hat-trick and set up another goal as Trabzonspor thrashed defending champions Galatasaray 4-0 at home on Saturday, handing the Istanbul side their first defeat of the Turkish Super Lig season. Read more at straitstimes.com.",
+   "url": "https://www.straitstimes.com/sport/football/salah-hat-trick-fires-trabzonspor-to-4-0-rout-of-galatasaray"
+  },
+  {
+   "at": "2026-09-20T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/serie-a/roma.webp",
+    "id": "fb39d9e4-f941-461c-a887-6b6af337f70c",
+    "name": "Roma",
+    "primary_color": "#8E1F2F",
+    "secondary_color": "#F0BC42",
+    "short_name": "Roma",
+    "slug": "roma"
+   },
+   "domain": "romapress.net",
+   "headline": "RomaPress \u2014 AS Roma News, Scores, Transfers, & More",
+   "id": "5e741ec3-1697-4560-8e4c-c51ced30dba8",
+   "image_url": "/media/links/8a/e3/8ae3073fd8d4448799ce9c7009b6d11d.webp",
+   "moot_short_id": "JPxaLdHngJ",
+   "moot_url": "/m/JPxaLdHngJ",
+   "source_name": "RomaPress",
+   "summary": "AS Roma news, results, transfer rumours, podcast, and more from across Serie A, Champions League, and elsewhere delivered by RomaPress.net.",
+   "url": "https://romapress.net/"
+  },
+  {
+   "at": "2026-09-20T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/manchester-city.webp",
+    "id": "0a60d06b-7174-408c-9980-0040c3880cab",
+    "name": "Manchester City",
+    "primary_color": "#6CABDD",
+    "secondary_color": "#1C2C5B",
+    "short_name": "Man City",
+    "slug": "manchester-city"
+   },
+   "domain": "theguardian.com",
+   "headline": "Latest news, sport and opinion from the Guardian",
+   "id": "a861bf79-24b6-469a-ae54-81bef23f0dcd",
+   "image_url": null,
+   "moot_short_id": null,
+   "moot_url": null,
+   "source_name": "theguardian.com",
+   "summary": "Latest news, sport, business, comment, analysis and reviews from the Guardian, the world's leading liberal voice",
+   "url": "https://www.theguardian.com/"
+  },
+  {
+   "at": "2026-09-20T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/serie-a/napoli.webp",
+    "id": "8168689a-22a6-45d6-9203-dbe09740f923",
+    "name": "Napoli",
+    "primary_color": "#12A0D7",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Napoli",
+    "slug": "napoli"
+   },
+   "domain": "foxsports.com",
+   "headline": "Napoli Team News - Soccer",
+   "id": "20deef6c-abe0-4c98-ab08-b317945cfe56",
+   "image_url": "/media/links/94/c7/94c7b6e9b08944b281de8a14001593ab.webp",
+   "moot_short_id": "1S1l2Zjen4",
+   "moot_url": "/m/1S1l2Zjen4",
+   "source_name": "FOX Sports",
+   "summary": "View the latest in Napoli Soccer team news here. Trending news, game recaps, highlights, player information, rumors, videos and more from FOX Sports.",
+   "url": "https://www.foxsports.com/soccer/napoli-team-news"
+  },
+  {
+   "at": "2026-09-20T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/serie-a/napoli.webp",
+    "id": "8168689a-22a6-45d6-9203-dbe09740f923",
+    "name": "Napoli",
+    "primary_color": "#12A0D7",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Napoli",
+    "slug": "napoli"
+   },
+   "domain": "football-italia.net",
+   "headline": "Serie A | Fiorentina 1-1 Napoli: Honours even as deflected Jimenez shot cancels out Gilmour opener - Football Italia",
+   "id": "2438b033-0200-4a22-8b39-0e21d47e893d",
+   "image_url": "/media/links/88/01/8801c2de86ec4afb987afff4af81038f.webp",
+   "moot_short_id": "0pKfPkEKOF",
+   "moot_url": "/m/0pKfPkEKOF",
+   "source_name": "Football Italia",
+   "summary": "Napoli dropped points at the Franchi in a game that could have finished 4-4, De Gea and Milinkovic-Savic producing a save apiece every few minutes and the",
+   "url": "https://www.football-italia.net/serie-a-fiorentina-1-1-napoli-honours-even-as-deflected-jimenez-shot-cancels-out-gilmour-opener/"
+  },
+  {
+   "at": "2026-09-20T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/la-liga/villarreal.webp",
+    "id": "f2f5eb87-ced1-4cba-a465-61c54a1242fb",
+    "name": "Villarreal",
+    "primary_color": "#FFE667",
+    "secondary_color": "#005187",
+    "short_name": "Villarreal",
+    "slug": "villarreal"
+   },
+   "domain": "foxsports.com",
+   "headline": "FOX Sports News, Scores, Schedules, Odds, Shows, Streams & Videos",
+   "id": "3675ce2e-7bbc-4124-a618-cdc83449223c",
+   "image_url": "/media/links/54/59/5459edc2837845e884785fa5922bd428.webp",
+   "moot_short_id": null,
+   "moot_url": null,
+   "source_name": "FOX Sports",
+   "summary": "Watch FOX Sports and view live scores, odds, team news, player news, streams, videos, stats, standings & schedules covering NFL, MLB, NASCAR, INDYCAR, NBA, NHL, college sports & more!",
+   "url": "https://www.foxsports.com/"
+  },
+  {
+   "at": "2026-09-20T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/la-liga/villarreal.webp",
+    "id": "f2f5eb87-ced1-4cba-a465-61c54a1242fb",
+    "name": "Villarreal",
+    "primary_color": "#FFE667",
+    "secondary_color": "#005187",
+    "short_name": "Villarreal",
+    "slug": "villarreal"
+   },
+   "domain": "livescores.com",
+   "headline": "Soccer Live Scores | Latest Results & Fixtures",
+   "id": "2c561681-d115-4c50-bc4b-5c34b3ee3523",
+   "image_url": "/media/links/0f/40/0f409163e45c40bb9740903d673a548e.webp",
+   "moot_short_id": "BA4JnzuGOH",
+   "moot_url": "/m/BA4JnzuGOH",
+   "source_name": "livescores.com",
+   "summary": "Soccer LiveScore - the 1st live score service on the Internet, powered by LiveScore.com, no.1 ranked Soccer website. Over 1000 live soccer games weekly, from every corner of the World.",
+   "url": "https://www.livescores.com/"
+  },
+  {
+   "at": "2026-09-20T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/serie-a/inter.webp",
+    "id": "fa2014bb-028b-4107-9d1e-d003b009422d",
+    "name": "Inter",
+    "primary_color": "#0068A8",
+    "secondary_color": "#000000",
+    "short_name": "Inter",
+    "slug": "inter"
+   },
+   "domain": "english.aawsat.com",
+   "headline": "Martinez Nets Double as Inter Come Back to Draw 2-2 with Roma",
+   "id": "463e2c84-5b4a-433b-ac3c-4f4ccb86bc80",
+   "image_url": "/media/links/e8/bd/e8bd7993a37b4bee8f9db24ae2ed5f45.webp",
+   "moot_short_id": "HD9RRUgMbX",
+   "moot_url": "/m/HD9RRUgMbX",
+   "source_name": "english.aawsat.com",
+   "summary": "Lautaro Martinez scored twice in the second half as Inter Milan came back from two goals down to draw 2-2 with AS Roma in their top-of-the-table Serie A clash at the Stadio Olimpico on Saturday, as both sides dropped points for the \u200cfirst time \u200cthis season. Manu Kone opened \u200cthe \u2060scoring for the home \u2060side with a right-footed shot in the sixth minute, and he added a second with his left 31 minutes later to send his side into the break \u20602-0 up.",
+   "url": "https://english.aawsat.com/sports/5320294-martinez-nets-double-inter-come-back-draw-2-2-roma"
+  }
+ ],
+ "page": 1,
+ "pages": 5,
+ "total": 84
+}

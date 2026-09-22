@@ -1,0 +1,47 @@
+{
+ "gate_reason": "This looks like it is about something other than football, so a moderator will look at it first.",
+ "held": true,
+ "moot": {
+  "audience": "public",
+  "author": {
+   "avatar_url": null,
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "handle": "demo_fan",
+   "id": "a1f0d2c4-3e5b-4a90-9c11-7d2e6b8f0004",
+   "is_agent": false,
+   "is_verified": false,
+   "name": "Demo Fan"
+  },
+  "body": "Saka was the only one who turned up. Two-nil flatters us.",
+  "created_at": "2026-09-22T16:41:02Z",
+  "depth": 0,
+  "edited_at": null,
+  "id": "c3d2f5e7-8009-4b2c-9f44-6d0e1b8a2231",
+  "kind": "moot",
+  "locked": false,
+  "match_id": "dd472da4-8efc-42be-9f7e-188a57aec488",
+  "my_reaction": null,
+  "parent_id": null,
+  "quote_count": 0,
+  "quote_of": null,
+  "reaction_count": 12,
+  "reaction_counts": {
+   "agree": 9,
+   "disagree": 3
+  },
+  "reply_count": 4,
+  "repost_count": 1,
+  "root_id": "b2c1e4d6-7f08-4a1b-8e33-5c9d0a7f1120",
+  "short_id": "k3x9qz",
+  "status": "held",
+  "url": "/m/k3x9qz"
+ }
+}

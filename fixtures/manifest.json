@@ -1,0 +1,447 @@
+[
+ {
+  "file": "get_v1_clubs_03ed2bce.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "manchester-city",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"ed5a487bb528eab6555235b3e531be3f\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.720188+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_2176ecbe.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "stuttgart",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"961704ccdc5b1c056aeb366e4cc0cf6f\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.878766+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_47b1ee84.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "atletic-club-d-escaldes",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"671daa9722715da56311ff00e422853b\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.448883+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_67cc5bdf.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "el-salvador",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"5eb5ddacaa2e45edc9e6be1d9aaa863d\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.554079+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_7961dbec.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"8a909dacb78380a885c53199e076c7c5\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.382540+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_7ab393bc.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "voluntari",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"73d64e92fb4f5ec1784ea4b6018fbc4a\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.923972+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_8cfd20de.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "catanzaro",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"4094008007012cae533a1863e31c4553\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.500474+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_8dec12f3.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "rudes",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"5138a21688460887fa846cab494ac675\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.825166+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_af32222c.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "osijek",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"0302d0fbda98774d71b4dcf392a8f493\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.768375+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_arsenal.json",
+  "method": "GET",
+  "path": "/v1/clubs/arsenal",
+  "params": {},
+  "status": 200,
+  "etag": "\"80c2b510f07af76210f6177628aa244f\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.289022+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_arsenal_news.json",
+  "method": "GET",
+  "path": "/v1/clubs/arsenal/news",
+  "params": {},
+  "status": 200,
+  "etag": "W/\"84cd28eca7e196d9ac86a972dffa4f6d\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.603977+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_c7ec812f.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "guam",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"81e6c9607348f38b2137ffb103b80bbe\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.607892+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_clubs_fad248bf.json",
+  "method": "GET",
+  "path": "/v1/clubs",
+  "params": {
+   "cursor": "kenya",
+   "limit": 100
+  },
+  "status": 200,
+  "etag": "\"0800b707cd127dfd1c86561d071ae97b\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.665383+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_feed_match_9ac1381e.json",
+  "method": "GET",
+  "path": "/v1/feed/match",
+  "params": {
+   "match_id": "dd472da4-8efc-42be-9f7e-188a57aec488",
+   "limit": 5
+  },
+  "status": 200,
+  "etag": "W/\"ae8ea6a4df2e849709e194e6a6d81f6d\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.200124+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_feed_trending_c453f42c.json",
+  "method": "GET",
+  "path": "/v1/feed/trending",
+  "params": {
+   "limit": 5
+  },
+  "status": 200,
+  "etag": "W/\"0f2cc9cc7fb97195d89edd5a0c74a489\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.314639+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_leagues.json",
+  "method": "GET",
+  "path": "/v1/leagues",
+  "params": {},
+  "status": 200,
+  "etag": "\"64a09acf8cdd6845f3bce0b68bd3381d\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.193314+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_leagues_premier_league.json",
+  "method": "GET",
+  "path": "/v1/leagues/premier-league",
+  "params": {},
+  "status": 200,
+  "etag": "\"dee263ff9f9d4fbeb35ca89137ec2867\"",
+  "cache_control": "public, max-age=300, stale-while-revalidate=600",
+  "recorded_at": "2026-09-22T05:43:51.240793+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_matches_416da77d.json",
+  "method": "GET",
+  "path": "/v1/matches",
+  "params": {
+   "club": "arsenal",
+   "limit": 5
+  },
+  "status": 200,
+  "etag": "\"46c26dd851cd56af3b0695b7fbacb6e8\"",
+  "cache_control": "public, max-age=60, stale-while-revalidate=300",
+  "recorded_at": "2026-09-22T05:43:52.052496+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_matches_by_path_premier_league_2026_27_brighton_hove_albion_vs_arsenal_2026_09_19.json",
+  "method": "GET",
+  "path": "/v1/matches/by-path/premier-league/2026-27/brighton-hove-albion-vs-arsenal-2026-09-19",
+  "params": {},
+  "status": 200,
+  "etag": "\"3119788a164934b1838f8404830cf0b7\"",
+  "cache_control": "public, max-age=60, stale-while-revalidate=300",
+  "recorded_at": "2026-09-22T05:43:52.250171+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_matches_dd472da4_8efc_42be_9f7e_188a57aec488.json",
+  "method": "GET",
+  "path": "/v1/matches/dd472da4-8efc-42be-9f7e-188a57aec488",
+  "params": {},
+  "status": 200,
+  "etag": "\"3119788a164934b1838f8404830cf0b7\"",
+  "cache_control": "public, max-age=60, stale-while-revalidate=300",
+  "recorded_at": "2026-09-22T05:43:52.100446+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_matches_dd472da4_8efc_42be_9f7e_188a57aec488_moots_c453f42c.json",
+  "method": "GET",
+  "path": "/v1/matches/dd472da4-8efc-42be-9f7e-188a57aec488/moots",
+  "params": {
+   "limit": 5
+  },
+  "status": 200,
+  "etag": "W/\"ae8ea6a4df2e849709e194e6a6d81f6d\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.150622+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_matches_live.json",
+  "method": "GET",
+  "path": "/v1/matches/live",
+  "params": {},
+  "status": 200,
+  "etag": "\"4f53cda18c2baa0c0354bb5f9a3ecbe5\"",
+  "cache_control": "public, max-age=5, stale-while-revalidate=25",
+  "recorded_at": "2026-09-22T05:43:51.961038+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_matches_upcoming_03555e72.json",
+  "method": "GET",
+  "path": "/v1/matches/upcoming",
+  "params": {
+   "days": 14
+  },
+  "status": 200,
+  "etag": "\"4f53cda18c2baa0c0354bb5f9a3ecbe5\"",
+  "cache_control": "public, max-age=60, stale-while-revalidate=300",
+  "recorded_at": "2026-09-22T05:43:52.000657+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_me.json",
+  "method": "GET",
+  "path": "/v1/me",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "get_v1_me_club.json",
+  "method": "GET",
+  "path": "/v1/me/club",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "get_v1_moots_7c9e1183_d0a6_4e9c_af6b_6510836105e3.json",
+  "method": "GET",
+  "path": "/v1/moots/7c9e1183-d0a6-4e9c-af6b-6510836105e3",
+  "params": {},
+  "status": 200,
+  "etag": "W/\"e81b8d739e2485ca081ecebf9fad85d0\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.374172+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_moots_7c9e1183_d0a6_4e9c_af6b_6510836105e3_replies.json",
+  "method": "GET",
+  "path": "/v1/moots/7c9e1183-d0a6-4e9c-af6b-6510836105e3/replies",
+  "params": {},
+  "status": 200,
+  "etag": "W/\"ae8ea6a4df2e849709e194e6a6d81f6d\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.422346+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_predictions_mine.json",
+  "method": "GET",
+  "path": "/v1/predictions/mine",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "get_v1_predictions_open.json",
+  "method": "GET",
+  "path": "/v1/predictions/open",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "get_v1_search_bcf76f4f.json",
+  "method": "GET",
+  "path": "/v1/search",
+  "params": {
+   "q": "arsenal",
+   "limit": 5
+  },
+  "status": 200,
+  "etag": "W/\"e741225ad39237a58e96881a889b9340\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.492432+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "get_v1_updates.json",
+  "method": "GET",
+  "path": "/v1/updates",
+  "params": {},
+  "status": 200,
+  "etag": "W/\"7abd1487c705ed11d9aca1afe8bd2bcd\"",
+  "cache_control": "private, no-cache",
+  "recorded_at": "2026-09-22T05:43:52.546811+00:00",
+  "synthetic": false
+ },
+ {
+  "file": "post_v1_follow_club_arsenal.json",
+  "method": "POST",
+  "path": "/v1/follow/club/arsenal",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "post_v1_moots.json",
+  "method": "POST",
+  "path": "/v1/moots",
+  "params": {},
+  "status": 201,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "post_v1_moots_held.json",
+  "method": "POST",
+  "path": "/v1/moots",
+  "params": {
+   "idempotency_key": "held"
+  },
+  "status": 201,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "post_v1_moots_react.json",
+  "method": "POST",
+  "path": "/v1/moots/b2c1e4d6-7f08-4a1b-8e33-5c9d0a7f1120/react",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "post_v1_predictions.json",
+  "method": "POST",
+  "path": "/v1/predictions",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ }
+]

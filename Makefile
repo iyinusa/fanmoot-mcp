@@ -10,7 +10,7 @@ PIP  := uv pip install --python $(PY)
 COMPOSE := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev test lint fmt types check migrate revision downgrade build up down logs shell clean
+.PHONY: help install dev test lint fmt types check migrate revision downgrade record build up down logs shell clean
 
 help:  ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -48,6 +48,9 @@ revision:  ## Autogenerate a migration: make revision m="oauth clients"
 
 downgrade:  ## Roll back one revision
 	$(VENV)/bin/alembic downgrade -1
+
+record:  ## Re-capture live /v1 responses into fixtures/ (needs network)
+	$(PY) scripts/record_fixtures.py $(ARGS)
 
 build:  ## Build the Docker image
 	docker build -t fanmoot-mcp:local .

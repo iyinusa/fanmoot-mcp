@@ -1,0 +1,144 @@
+{
+ "clubs": [
+  {
+   "badge_path": "/static/badges/premier-league/arsenal.webp",
+   "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+   "name": "Arsenal",
+   "primary_color": "#EF0107",
+   "secondary_color": "#FFFFFF",
+   "short_name": "Arsenal",
+   "slug": "arsenal"
+  },
+  {
+   "badge_path": "/static/badges/primeira-liga/braga.webp",
+   "id": "2145b5c8-6c9c-4359-8e4a-432ff9ca41fc",
+   "name": "Braga",
+   "primary_color": "#E30613",
+   "secondary_color": "#FFFFFF",
+   "short_name": "Braga",
+   "slug": "braga"
+  },
+  {
+   "badge_path": "/static/badges/npfl/bendel-insurance.webp",
+   "id": "f6769a8e-da72-4c59-8418-4a3d5efc2261",
+   "name": "Bendel Insurance",
+   "primary_color": "#005CA9",
+   "secondary_color": "#FFFFFF",
+   "short_name": "Insurance",
+   "slug": "bendel-insurance"
+  }
+ ],
+ "leagues": [],
+ "matches": [],
+ "moots": [],
+ "names_first": true,
+ "people": [],
+ "query": "arsenal",
+ "updates": [
+  {
+   "at": "2026-09-21T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "domain": "justarsenal.com",
+   "headline": "\u201cWe have to say sorry\u201d, Guimar\u00e3es apologises to Arsenal fans after Brighton nightmare - Just Arsenal News",
+   "id": "3154294a-9b28-4e63-b0ec-22822a312efd",
+   "image_url": "/media/links/31/e1/31e1b6d87f684ab2a95ae51fa2f69d9a.webp",
+   "moot_short_id": "2YGjogZaBW",
+   "moot_url": "/m/2YGjogZaBW",
+   "source_name": "Just Arsenal News",
+   "summary": "Bruno Guimar\u00e3es apologises to Arsenal fans after the 3-0 Brighton defeat and admits the Gunners\u2019 performance was simply unacceptable.",
+   "url": "https://justarsenal.com/we-have-to-say-sorry-guimaraes-apologises-to-arsenal-fans-after-brighton-nightmare/"
+  },
+  {
+   "at": "2026-09-18T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "domain": "justarsenal.com",
+   "headline": "Arsenal completes deal for outstanding Liverpool teenage star - Just Arsenal News",
+   "id": "bfc3e80b-2565-46ae-a2b8-9e59dcf3095a",
+   "image_url": "/media/links/1a/7f/1a7f4e0874f54044996547a62557dff7.webp",
+   "moot_short_id": "WZOxhzP1ST",
+   "moot_url": "/m/WZOxhzP1ST",
+   "source_name": "Just Arsenal News",
+   "summary": "Arsenal have completed the signing of Vincent Joseph from Liverpool, securing one of the Reds\u2019 highly regarded teenage talents this campaign.",
+   "url": "https://www.justarsenal.com/arsenal-completes-deal-for-outstanding-liverpool-teenage-star/432098"
+  },
+  {
+   "at": "2026-09-17T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "domain": "justarsenal.com",
+   "headline": "Arsenal is considering sending attacker out on loan - Just Arsenal News",
+   "id": "16ae9317-29c4-4bbf-b575-f23d754f7d92",
+   "image_url": "/media/links/3f/2f/3f2f55480c9c454482ac31d9e3a2377b.webp",
+   "moot_short_id": null,
+   "moot_url": null,
+   "source_name": "Just Arsenal News",
+   "summary": "Arsenal have struggled to find space for Noni Madueke in the team this season, and the form of Max Dowman",
+   "url": "https://www.justarsenal.com/arsenal-is-considering-sending-attacker-out-on-loan/422172"
+  },
+  {
+   "at": "2026-09-20T22:45:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "domain": "justarsenal.com",
+   "headline": "Just Arsenal News",
+   "id": "a6c96545-22e5-4498-91ac-04d0b4dad0a2",
+   "image_url": null,
+   "moot_short_id": "QotZlp2Xrc",
+   "moot_url": "/m/QotZlp2Xrc",
+   "source_name": "Just Arsenal News",
+   "summary": "Just Arsenal News, Transfer Rumours And Discussion about all matters relating to Arsenal Football Club",
+   "url": "https://www.justarsenal.com/"
+  },
+  {
+   "at": "2026-09-19T00:00:00Z",
+   "club": {
+    "badge_path": "/static/badges/premier-league/arsenal.webp",
+    "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+    "name": "Arsenal",
+    "primary_color": "#EF0107",
+    "secondary_color": "#FFFFFF",
+    "short_name": "Arsenal",
+    "slug": "arsenal"
+   },
+   "domain": "theguardian.com",
+   "headline": "Brighton demolish champions Arsenal 3-0 to mark anniversary in style",
+   "id": "515fff85-25fd-4161-8ade-23c583345277",
+   "image_url": "/media/links/00/d6/00d6e74d4e64454eb3acde2267541646.webp",
+   "moot_short_id": "2utzLAYsEz",
+   "moot_url": "/m/2utzLAYsEz",
+   "source_name": "the Guardian",
+   "summary": "Brighton produced a superb performance in a 3-0 home win over the champions Arsenal, with goals from Gross, Kostoulas and Andr\u00e9s",
+   "url": "https://www.theguardian.com/football/2026/sep/19/brighton-arsenal-premier-league-match-report"
+  }
+ ]
+}

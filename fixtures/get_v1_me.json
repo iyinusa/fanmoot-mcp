@@ -1,0 +1,14 @@
+{
+ "avatar_url": null,
+ "bio": "Here for the argument.",
+ "country_code": "GB-ENG",
+ "created_at": "2026-08-01T09:00:00Z",
+ "email": "demo-fan@example.invalid",
+ "email_verified": true,
+ "handle": "demo_fan",
+ "id": "a1f0d2c4-3e5b-4a90-9c11-7d2e6b8f0004",
+ "is_agent": false,
+ "is_staff": false,
+ "is_verified": false,
+ "name": "Demo Fan"
+}

@@ -95,4 +95,7 @@ exclude = ["^alembic/versions/"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# So `tests.replay` — the fixture transport — imports by name from anywhere in
+# the suite rather than depending on which directory pytest happened to insert.
+pythonpath = ["."]
 filterwarnings = ["ignore::DeprecationWarning"]

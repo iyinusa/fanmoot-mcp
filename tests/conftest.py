@@ -31,13 +31,18 @@ os.environ.setdefault("FMCP_PUBLIC_BASE_URL", "http://testserver")
 os.environ.setdefault("FMCP_FANMOOT_API_BASE_URL", "https://fanmoot.test")
 os.environ.setdefault("FMCP_SECRET_ENCRYPTION_KEY", "")
 
+import asyncio  # noqa: E402
+
 import httpx  # noqa: E402
 import pytest  # noqa: E402
+import uvicorn  # noqa: E402
 
 from app.fanmoot import cache  # noqa: E402
 from app.fanmoot import client as fanmoot_client  # noqa: E402
 from app.fanmoot.names import Catalogue, load_catalogue  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.mcp import telemetry  # noqa: E402
+from app.mcp.server import FanmootMCP, set_server  # noqa: E402
 from app.settings import Settings, get_settings, reset_settings_cache  # noqa: E402
 from tests.replay import Replay  # noqa: E402
 
@@ -90,3 +95,69 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as http:
         yield http
+
+
+# ── The MCP server, over a real socket ───────────────────────────────────────
+# Streamable HTTP is SSE, and httpx's ASGI transport buffers a whole response
+# before returning it — so an in-process ASGI client would deadlock the moment
+# the server held a stream open. These tests therefore drive a real uvicorn on
+# a loopback port with the MCP *client SDK*, which is the only way to assert
+# that a client Alexa+ will use can actually talk to this server (HAD-14).
+
+
+class _Server(uvicorn.Server):
+    """uvicorn without its signal handlers, which would replace pytest's."""
+
+    def install_signal_handlers(self) -> None:
+        return None
+
+
+@pytest.fixture(autouse=True)
+def _forget_tool_calls() -> Iterator[None]:
+    """The tool-call ring is process-wide; one test must not see another's."""
+    telemetry.reset()
+    yield
+    telemetry.reset()
+
+
+@pytest.fixture
+def mcp_server() -> Iterator[FanmootMCP]:
+    """A fresh MCP server, installed as the process's own for one test.
+
+    Tests register their own tools on it — there are none until `S3` — and a
+    shared instance would carry each test's tools into every later
+    `tools/list`.
+    """
+    server = FanmootMCP()
+    set_server(server)
+    yield server
+    set_server(None)
+
+
+@pytest.fixture
+async def mcp_url(mcp_server: FanmootMCP) -> AsyncIterator[str]:
+    """``http://127.0.0.1:<port>/mcp``, served by a real application.
+
+    Port 0 so tests can run in parallel and never collide on a fixed one.
+    """
+    config = uvicorn.Config(
+        create_app(), host="127.0.0.1", port=0, log_level="warning", access_log=False
+    )
+    server = _Server(config)
+    serving = asyncio.create_task(server.serve())
+
+    deadline = asyncio.get_running_loop().time() + 10
+    while not server.started:
+        if serving.done():  # pragma: no cover - only on a startup failure
+            await serving
+            raise RuntimeError("the test server exited during startup")
+        if asyncio.get_running_loop().time() > deadline:  # pragma: no cover
+            raise TimeoutError("the test server did not start")
+        await asyncio.sleep(0.01)
+
+    port = server.servers[0].sockets[0].getsockname()[1]
+    try:
+        yield f"http://127.0.0.1:{port}/mcp"
+    finally:
+        server.should_exit = True
+        await serving

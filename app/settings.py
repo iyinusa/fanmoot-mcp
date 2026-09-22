@@ -66,6 +66,26 @@ class Settings(BaseSettings):
     db_max_overflow: int = 10
     db_echo: bool = False
 
+    # ── MCP transport (S2) ───────────────────────────────────────────────────
+    # Browser origins allowed to reach /mcp, comma-separated. A non-browser
+    # client — Alexa+, Claude Desktop, Cursor, curl — sends no `Origin` header
+    # and is unaffected; this list exists for the ones that do, which in
+    # practice means the web demo at amazonplus.fanmoot.com and the MCP
+    # Inspector. Empty is the safe default: every browser is refused with a 403
+    # and every real client still connects.
+    mcp_allowed_origins: str = ""
+
+    # How long a Streamable HTTP session may sit idle before it is closed and
+    # its id starts answering 404. Thirty minutes is longer than any voice
+    # conversation and short enough that an abandoned session is not memory
+    # this process holds all night.
+    mcp_session_idle_timeout_s: float = 1800.0
+
+    # Concurrent sessions. Past this a new one is refused with a 503 and the
+    # open ones are untouched — a ceiling that sheds load rather than one that
+    # takes the process down with it.
+    mcp_max_sessions: int = 500
+
     # ── Secrets ──────────────────────────────────────────────────────────────
     # The Fernet key that wraps a fan's upstream Fanmoot refresh token at rest
     # (HAD-3). Empty is a *working* configuration for everything that does not
@@ -83,6 +103,8 @@ class Settings(BaseSettings):
         "db_pool_size",
         "db_max_overflow",
         "db_echo",
+        "mcp_session_idle_timeout_s",
+        "mcp_max_sessions",
         mode="before",
     )
     @classmethod
@@ -149,6 +171,17 @@ class Settings(BaseSettings):
         rather than discovers from a failed grant.
         """
         return bool(self.secret_encryption_key.strip())
+
+    @property
+    def mcp_allowed_origin_list(self) -> list[str]:
+        """``FMCP_MCP_ALLOWED_ORIGINS`` as origins, with this server's own added.
+
+        A page served from ``public_base_url`` is always allowed: the OAuth
+        consent screen and the sign-up form live there, and an operator should
+        not have to list their own host to make their own pages work.
+        """
+        configured = [part.strip() for part in self.mcp_allowed_origins.split(",")]
+        return [self.public_base_url, *(origin for origin in configured if origin)]
 
     def url_for(self, path: str) -> str:
         """Absolute URL on *this* server — the OAuth documents are full of them."""

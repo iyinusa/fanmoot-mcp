@@ -41,6 +41,13 @@ services:
       FMCP_DB_POOL_SIZE: ${FMCP_DB_POOL_SIZE:-5}
       FMCP_DB_MAX_OVERFLOW: ${FMCP_DB_MAX_OVERFLOW:-10}
 
+      # ── MCP transport (S2) ──────────────────────────────────────────────
+      # Browser origins allowed to reach /mcp. This server's own origin is
+      # always allowed; non-browser clients send no Origin and are unaffected.
+      FMCP_MCP_ALLOWED_ORIGINS: ${FMCP_MCP_ALLOWED_ORIGINS:-}
+      FMCP_MCP_SESSION_IDLE_TIMEOUT_S: ${FMCP_MCP_SESSION_IDLE_TIMEOUT_S:-1800}
+      FMCP_MCP_MAX_SESSIONS: ${FMCP_MCP_MAX_SESSIONS:-500}
+
       # ── Secrets ─────────────────────────────────────────────────────────
       # Unset, the authenticated tools are simply off: a grant cannot be
       # encrypted at rest, so it is refused rather than stored in plaintext.

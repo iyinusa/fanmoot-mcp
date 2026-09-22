@@ -7,9 +7,9 @@ sign in *or sign up* from the client and then post in their own name.
 
 Spec era **`2025-11-25`**, Streamable HTTP, on `POST|GET /mcp`.
 
-> **Skeleton.** This README fills out as the milestones land. `S0` is the
-> scaffold: package, settings, logging, health, Docker, CI. See
-> `../Amazon Hackathon.md` §6 for the milestone list.
+> **Skeleton.** This README fills out as the milestones land. Through `S2`
+> the server speaks the protocol and has no football tools yet — those arrive
+> with `S3`. See `../Amazon Hackathon.md` §6 for the milestone list.
 
 ## What it talks to
 
@@ -58,8 +58,38 @@ from Fanmoot's own schemas and marked `synthetic` in the manifest.
 
 ## Connect a client
 
-*(Arrives with `S2`. The endpoint is `https://mcp.fanmoot.com/mcp`; it speaks
-Streamable HTTP and negotiates protocol version `2025-11-25`.)*
+The endpoint is `https://mcp.fanmoot.com/mcp` — one path, three methods:
+`POST` sends a JSON-RPC frame and gets an SSE stream back, `GET` opens the
+stream the server pushes notifications down, `DELETE` ends the session. There
+is no trailing slash and no redirect.
+
+Locally, with `make dev` running in another shell:
+
+```bash
+make inspect          # MCP Inspector against http://127.0.0.1:8080/mcp
+make inspect MCP_URL=https://mcp.fanmoot.com/mcp
+```
+
+Full client-by-client configuration — Claude, ChatGPT, Cursor, Alexa+ — lands
+with `S7-6`, once there are tools worth connecting to.
+
+### What the transport does
+
+- **Protocol `2025-11-25`**, the era Alexa+ implements. The SDK also ships the
+  newer one; serving only that would fail the track, so the negotiated version
+  is asserted in `tests/test_mcp_transport.py`.
+- **Sessions**, with `Last-Event-ID` resumability: a client whose SSE stream
+  drops reconnects quoting the last event it saw and is sent what it missed.
+- **`Origin` validation**, returning `403` — a spec MUST and the defence
+  against DNS rebinding. Non-browser clients send no `Origin` and are
+  unaffected; browser origins are configured with `FMCP_MCP_ALLOWED_ORIGINS`.
+- **Every JSON-RPC frame logged** with a request id, and one record per tool
+  call with its duration and outcome. An inbound `X-Request-ID` is honoured, so
+  a frame in the demo's trace panel and a line in these logs are the same
+  event. No frame payloads and no tool arguments are ever logged.
+- **Errors that teach**: a bad argument comes back as a tool execution error
+  carrying a sentence a model can read aloud — "I still need club for that." —
+  not a protocol error that ends the turn.
 
 ## Licence
 

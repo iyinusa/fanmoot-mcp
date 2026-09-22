@@ -4,10 +4,16 @@ One process, one Traefik route. The MCP Streamable HTTP endpoint (``/mcp``),
 the OAuth 2.1 authorization server, its three discovery documents under
 ``/.well-known``, the consent and sign-up HTML, and ``/healthz`` are all served
 from ``https://mcp.fanmoot.com`` by this app (HAD-2, HAD-4). The MCP server
-mounts as an ASGI sub-app rather than running as its own service, so a client
+mounts as an ASGI route rather than running as its own service, so a client
 that has completed an OAuth flow is already talking to the right origin.
 
-At ``S0`` only ``/healthz`` exists; the mounts arrive with ``S2`` and ``S4``.
+At ``S2`` ``/healthz`` and ``/mcp`` exist; the OAuth half arrives with ``S4``.
+
+**Everything is built per application, not per process.** The MCP session
+manager owns a task group that can be started exactly once, so a module-level
+singleton would mean the second application built in a process — which is every
+test after the first — inherits a manager that has already been shut down. The
+manager therefore lives on ``app.state`` and the lifespan reads it from there.
 """
 
 from __future__ import annotations
@@ -22,12 +28,14 @@ from app.db import dispose_engine
 from app.fanmoot import cache as fanmoot_cache
 from app.fanmoot.client import close_client, get_client
 from app.logging_config import configure_logging, get_logger
+from app.mcp import transport
+from app.mcp.server import get_server
 from app.middleware import RequestIdMiddleware
 from app.settings import Settings, get_settings
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.env)
 
@@ -49,7 +57,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         grant_storage=settings.can_store_grants,
     )
 
-    yield
+    # The MCP transport's task group wraps the yield: every session is a task
+    # inside it, so it opens before the first request can arrive and closes
+    # after the last one has been answered.
+    async with transport.running(app.state.mcp_session_manager):
+        yield
 
     await close_client()
     await dispose_engine()
@@ -74,11 +86,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     # Outermost, so every request that is handled gets an id and a log line —
-    # including every JSON-RPC frame on the /mcp mount, which is what makes the
+    # including every JSON-RPC frame on the /mcp route, which is what makes the
     # demo's trace panel line up with this server's logs (HAD-12).
     app.add_middleware(RequestIdMiddleware)
 
     app.include_router(health.router)
+
+    session_manager = transport.build_session_manager(get_server(), settings)
+    app.state.mcp_session_manager = session_manager
+    app.router.routes.append(transport.build_route(session_manager, settings))
 
     return app
 

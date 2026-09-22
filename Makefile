@@ -9,8 +9,12 @@ PY   := $(VENV)/bin/python
 PIP  := uv pip install --python $(PY)
 COMPOSE := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 
+# Where `make dev` serves the MCP endpoint. Override to point the Inspector at
+# a deployed server: make inspect MCP_URL=https://mcp.fanmoot.com/mcp
+MCP_URL ?= http://127.0.0.1:8080/mcp
+
 .DEFAULT_GOAL := help
-.PHONY: help install dev test lint fmt types check migrate revision downgrade record build up down logs shell clean
+.PHONY: help install dev test lint fmt types check inspect migrate revision downgrade record build up down logs shell clean
 
 help:  ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -38,6 +42,11 @@ types:  ## Type-check with mypy --strict
 	$(VENV)/bin/mypy app
 
 check: lint types test  ## Everything CI runs — must pass before ticking a milestone task
+
+inspect:  ## Open MCP Inspector against a running server (needs `make dev` in another shell)
+	@echo "Streamable HTTP → $(MCP_URL)"
+	@echo "If the Inspector opens without the URL filled in, paste it and pick 'Streamable HTTP'."
+	npx --yes @modelcontextprotocol/inspector --transport http --server-url $(MCP_URL)
 
 migrate:  ## Apply migrations
 	$(VENV)/bin/alembic upgrade head

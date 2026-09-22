@@ -43,6 +43,7 @@ from app.mcp.instructions import (
     SERVER_INSTRUCTIONS,
     SERVER_TITLE,
 )
+from app.mcp.tools import register_read_tools
 
 #: The handle, not the name. Clients key configuration off this and the MCP
 #: registry entry will use it, so it does not change once published.
@@ -88,6 +89,12 @@ class FanmootMCP(FastMCP[Any]):
         # what a voice client sends — "3" for an int, a date as a string —
         # where a raw JSON Schema check would refuse it.
         server.call_tool(validate_input=False)(self._call_tool_recorded)
+
+        # The surface itself (`S3`). Registered on the instance rather than in
+        # `get_server`, because a server that answers `tools/list` with nothing
+        # is not this server — and a test that wants an empty one builds a bare
+        # `FastMCP` instead.
+        register_read_tools(self)
 
     @property
     def lowlevel(self) -> LowLevelServer[Any, Request]:

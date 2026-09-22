@@ -86,6 +86,33 @@ class Settings(BaseSettings):
     # takes the process down with it.
     mcp_max_sessions: int = 500
 
+    # ── Voice (S3-1) ─────────────────────────────────────────────────────────
+    # The zone kick-off times are spoken in. An MCP request carries no locale
+    # and no timezone, so a voice surface has to choose one and say which:
+    # Fanmoot lists its fixtures in UK time, so that is the default.
+    voice_timezone: str = "Europe/London"
+
+    # ── Bedrock: match_mood's sentiment pass (S3-7, HAD-9) ───────────────────
+    # `match_mood` is the one read tool this server *computes* rather than
+    # fetches: it samples a public match thread and labels it with its own
+    # Bedrock call. Credentials come from the standard AWS chain (environment,
+    # profile, or the task role in production) rather than from FMCP_ variables,
+    # so nothing secret is declared here.
+    #
+    # An empty model id turns the Bedrock pass off and leaves `match_mood`
+    # answering from the offline lexicon in `app.mood` — which is what the test
+    # suite runs against, and what a deployment without AWS credentials
+    # degrades to rather than failing the tool outright.
+    bedrock_region: str = "us-east-1"
+    bedrock_model_id: str = "amazon.nova-lite-v1:0"
+    # A voice turn cannot wait: past this the mood falls back to the lexicon
+    # rather than spending the fan's patience on a better adjective.
+    bedrock_timeout_s: float = 4.0
+    # How many takes are sampled from a thread. Counts, not quotes — this is
+    # the one number in the read surface that is not bounded by HAD-7's cap of
+    # twenty, because none of these moots is read aloud.
+    mood_sample_size: int = 40
+
     # ── Secrets ──────────────────────────────────────────────────────────────
     # The Fernet key that wraps a fan's upstream Fanmoot refresh token at rest
     # (HAD-3). Empty is a *working* configuration for everything that does not
@@ -105,6 +132,8 @@ class Settings(BaseSettings):
         "db_echo",
         "mcp_session_idle_timeout_s",
         "mcp_max_sessions",
+        "bedrock_timeout_s",
+        "mood_sample_size",
         mode="before",
     )
     @classmethod
@@ -171,6 +200,16 @@ class Settings(BaseSettings):
         rather than discovers from a failed grant.
         """
         return bool(self.secret_encryption_key.strip())
+
+    @property
+    def mood_uses_bedrock(self) -> bool:
+        """Whether ``match_mood`` has a model to call.
+
+        False is a working configuration, not a broken one: the tool answers
+        from the lexicon and says so in its payload, which is what keeps the
+        read surface whole on a laptop with no AWS credentials.
+        """
+        return bool(self.bedrock_model_id.strip())
 
     @property
     def mcp_allowed_origin_list(self) -> list[str]:

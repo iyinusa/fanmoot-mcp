@@ -321,6 +321,17 @@
  {
   "file": "get_v1_moots_7c9e1183_d0a6_4e9c_af6b_6510836105e3.json",
   "method": "GET",
+  "path": "/v1/m/HU6yREc6mJ",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
+  "file": "get_v1_moots_7c9e1183_d0a6_4e9c_af6b_6510836105e3.json",
+  "method": "GET",
   "path": "/v1/moots/7c9e1183-d0a6-4e9c-af6b-6510836105e3",
   "params": {},
   "status": 200,

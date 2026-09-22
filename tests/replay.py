@@ -35,9 +35,13 @@ class Recorded:
     status: int
     etag: str | None
     synthetic: bool
+    #: Set by ``Replay.stub`` instead of ``file``. See that method.
+    payload: Any = None
 
     @property
     def body(self) -> Any:
+        if self.payload is not None:
+            return self.payload
         return json.loads((FIXTURES / self.file).read_text())
 
     def key(self) -> tuple[str, str, tuple[tuple[str, str], ...]]:
@@ -91,6 +95,41 @@ class Replay:
         return [r.request.url.path if hasattr(r, "request") else "" for r in []] or [
             str(c.url.path) for c in self.calls
         ]
+
+    def stub(
+        self,
+        path: str,
+        body: Any,
+        *,
+        method: str = "GET",
+        params: dict[str, Any] | None = None,
+        status: int = 200,
+    ) -> None:
+        """Install one response for this test only, from a literal body.
+
+        The corpus in ``fixtures/`` is real: it is what fanmoot.com answered on
+        the day it was recorded, and that is what makes it worth asserting
+        against (HAD-14). What it cannot contain is a *moment* — the recording
+        was taken on a Tuesday morning out of season, so ``/v1/matches/live``
+        is empty and every match thread is quiet.
+
+        A scenario test therefore says, in as many words, "given a match at
+        two-one in the sixty-seventh minute", and this is where that given
+        goes. It overrides one key for one test; everything else in the corpus
+        still replays, and the shapes here are built from the same mirrors the
+        recordings validate against.
+        """
+        recorded = Recorded(
+            file="",
+            method=method,
+            path=path,
+            params=params or {},
+            status=status,
+            etag=None,
+            synthetic=True,
+            payload=body,
+        )
+        self.recordings[recorded.key()] = recorded
 
     def fail(self, path: str, *outcomes: int | Exception) -> None:
         """Queue failures for one path. Each call consumes one; when the queue

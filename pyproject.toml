@@ -38,6 +38,11 @@ dependencies = [
     "pyjwt>=2.8",
     "cryptography>=42.0",     # Fernet envelope for upstream_sessions (HAD-3)
 
+    # ── AWS ──────────────────────────────────────────────────────────────────
+    # Bedrock, for `match_mood`'s sentiment pass (S3-7). The Converse API only,
+    # called in a worker thread with botocore's own timeouts — see `app/mood.py`.
+    "boto3>=1.34",
+
     # ── Infrastructure ───────────────────────────────────────────────────────
     "httpx>=0.27",
     "structlog>=24.1",

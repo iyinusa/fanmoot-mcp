@@ -115,13 +115,22 @@ def test_a_rate_limit_keeps_its_own_words() -> None:
 
 @pytest.fixture
 def failing_tools(mcp_server: FanmootMCP) -> FanmootMCP:
+    """Two tools that fail on demand.
+
+    Named for what they do here rather than after the real surface: the server
+    carries the twelve read tools of ``S3`` from the moment it is built, and a
+    stub sharing one of their names would be quietly refused as a duplicate —
+    leaving this test asserting against the real tool's behaviour instead of
+    the contract it means to check.
+    """
+
     @mcp_server.tool()
-    async def get_match(club: str) -> str:
+    async def match_report(club: str) -> str:
         """The match a club is playing."""
         raise FanmootUnavailable("Fanmoot is not answering right now.")
 
     @mcp_server.tool()
-    async def live_scores(competition: str) -> str:
+    async def competition_scores(competition: str) -> str:
         """Scores in a competition."""
         return f"nothing on in {competition}"
 
@@ -136,7 +145,7 @@ async def test_a_failing_tool_answers_in_words_not_a_protocol_error(
         ClientSession(read, write) as session,
     ):
         await session.initialize()
-        result = await session.call_tool("get_match", {"club": "arsenal"})
+        result = await session.call_tool("match_report", {"club": "arsenal"})
 
     assert result.isError is True
     assert isinstance(result.content[0], TextContent)
@@ -153,8 +162,10 @@ async def test_a_missing_argument_does_not_end_the_session(
         ClientSession(read, write) as session,
     ):
         await session.initialize()
-        failed = await session.call_tool("live_scores", {})
-        recovered = await session.call_tool("live_scores", {"competition": "the premier league"})
+        failed = await session.call_tool("competition_scores", {})
+        recovered = await session.call_tool(
+            "competition_scores", {"competition": "the premier league"}
+        )
 
     assert failed.isError is True
     assert isinstance(failed.content[0], TextContent)

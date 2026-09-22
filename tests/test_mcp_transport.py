@@ -79,11 +79,15 @@ async def test_the_model_is_told_how_to_speak_a_scoreline(mcp_url: str) -> None:
 
 
 async def test_the_whole_surface_answers(mcp_url: str, mcp_server: FanmootMCP) -> None:
-    """``S2-8``. Empty is a legitimate answer — the tools land with ``S3``.
+    """``S2-8``. Each capability is *declared and handled*.
 
-    What is being asserted is that each capability is *declared and handled*: a
-    client that finds `prompts/list` unimplemented stops asking, and the prompts
-    `S3` adds would never be discovered.
+    A client that finds `prompts/list` unimplemented stops asking, and the
+    prompts `S6` adds would never be discovered — so an empty list is the
+    answer that matters here, not an error.
+
+    A tool registered by the test appears alongside the twelve `S3` installs,
+    which is the other half of the assertion: the surface is the server's, and
+    a test can still add to it.
     """
 
     @mcp_server.tool()
@@ -100,7 +104,9 @@ async def test_the_whole_surface_answers(mcp_url: str, mcp_server: FanmootMCP) -
         resources = await session.list_resources()
         prompts = await session.list_prompts()
 
-    assert [tool.name for tool in tools.tools] == ["whistle"]
+    names = [tool.name for tool in tools.tools]
+    assert "whistle" in names
+    assert "live_scores" in names
     assert resources.resources == []
     assert prompts.prompts == []
 
@@ -122,7 +128,7 @@ async def test_a_tool_declares_input_and_output_schemas(
         await session.initialize()
         tools = await session.list_tools()
 
-    tool = tools.tools[0]
+    tool = next(t for t in tools.tools if t.name == "score")
     assert tool.inputSchema["properties"]["club"]["type"] == "string"
     assert tool.inputSchema["required"] == ["club"]
     assert tool.outputSchema is not None

@@ -395,6 +395,25 @@ async def get_moot(
     )
 
 
+async def get_moot_by_short_id(
+    short_id: str, *, token: str | None = None, client: FanmootClient | None = None
+) -> ThreadOut:
+    """``GET /v1/m/{short_id}`` — the same thread, by the id a fan can read.
+
+    ``fanmoot.com/m/sBUE6OlITD`` is the URL that appears in a club news item
+    and in a share sheet, so it is the id a fan actually has to hand.
+    ``read_thread`` accepts either (``S3-5``), and this is the half a UUID
+    route cannot serve.
+    """
+    return await _read_model(
+        ThreadOut,
+        f"/v1/m/{short_id}",
+        ttl=cache_module.TTL_THREAD,
+        token=token,
+        client=client,
+    )
+
+
 async def list_replies(
     moot_id: uuid.UUID | str,
     *,

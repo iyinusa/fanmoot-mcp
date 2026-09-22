@@ -20,18 +20,27 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app import __version__, health
 from app.db import dispose_engine
 from app.fanmoot import cache as fanmoot_cache
+from app.fanmoot import names as fanmoot_names
 from app.fanmoot.client import close_client, get_client
 from app.logging_config import configure_logging, get_logger
 from app.mcp import transport
 from app.mcp.server import get_server
 from app.middleware import RequestIdMiddleware
 from app.settings import Settings, get_settings
+
+#: Icons, and from `S8` the brand assets an add-on manifest points at. Served
+#: by this server rather than linked to fanmoot.com: a client rendering the
+#: tool list has already connected here, and an icon behind a second origin is
+#: an icon that is missing whenever that origin is blocked (`S3-8`).
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 @asynccontextmanager
@@ -44,6 +53,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # a pool created mid-turn has already spent it.
     get_client()
     fanmoot_cache.reset_cache()
+    # The indexed catalogue is built from the cache, so it is dropped with it:
+    # a worker that started with a warm index and a cold cache would resolve
+    # names against a Fanmoot it has not spoken to (`S3-2`).
+    fanmoot_names.reset_catalogue()
 
     log = get_logger("startup")
     log.info(
@@ -91,6 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
 
     app.include_router(health.router)
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     session_manager = transport.build_session_manager(get_server(), settings)
     app.state.mcp_session_manager = session_manager

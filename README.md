@@ -7,9 +7,11 @@ sign in *or sign up* from the client and then post in their own name.
 
 Spec era **`2025-11-25`**, Streamable HTTP, on `POST|GET /mcp`.
 
-> **Skeleton.** This README fills out as the milestones land. Through `S2`
-> the server speaks the protocol and has no football tools yet — those arrive
-> with `S3`. See `../Amazon Hackathon.md` §6 for the milestone list.
+> **In progress.** This README fills out as the milestones land. Through `S3`
+> the server answers football questions to anyone who connects; posting,
+> replying and predicting need the OAuth server that arrives with `S4` and the
+> tools that sit on it in `S5`. See `../Amazon Hackathon.md` §6 for the
+> milestone list.
 
 ## What it talks to
 
@@ -19,6 +21,52 @@ connection pool with it. Everything the server can possibly do, a fan could do
 through the public API.
 
 Its own small PostgreSQL holds **OAuth state and nothing else**.
+
+## What it can answer
+
+Twelve read tools, no authentication. A client that connects can ask who is
+playing tonight, what the score is, and what fans are saying about it.
+
+| Tool | What a fan is asking |
+|---|---|
+| `find_club` | "the gunners", "spurs", "los blancos" → the club |
+| `find_competition` | "the Prem" → the competition and its clubs |
+| `list_matches` | "who are Arsenal playing", "how did they get on" |
+| `upcoming_matches` | "what's on this weekend", grouped by day |
+| `get_match` | "what's happening in the Brighton game" |
+| `live_scores` | "what's the score", "is anything on" |
+| `read_match_conversation` | "what are fans saying about it" |
+| `read_thread` | one take and the argument under it |
+| `search_fanmoot` | anything the others cannot place |
+| `trending_takes` | "what's everyone talking about" |
+| `club_news` | "any news about the transfer" |
+| `match_mood` | "are fans happy", as three numbers and a sentence |
+
+Four things hold across all of them, and they are the difference between a
+voice surface and a REST API with a JSON-RPC envelope:
+
+- **Nouns a fan says, not ids.** `get_match` takes `"arsenal vs spurs"`, a
+  fanmoot.com link, or a UUID. A name that could mean three clubs comes back as
+  a question — "Do you mean Arsenal, Aston Villa or Athletic Club?" — never as
+  a guess.
+- **An answer that can be read aloud.** Every result carries
+  `structuredContent` for a machine *and* a `content[0].text` a model can speak
+  unedited: "Arsenal are two-one up at the Emirates, sixty-seventh minute."
+  One module writes all of them (`app/voice.py`), so the server has one voice.
+- **Bounded output.** Five by default, twenty at the cap, declared in each
+  tool's JSON Schema — and what was left out is said: "There are four more
+  fixtures."
+- **A score nobody observed is never stated.** Fanmoot marks a scoreline
+  `assumed` when a server-side clock started the match and no source has
+  confirmed anything since. Those come back as "under way, but nobody has
+  confirmed a score yet".
+
+`match_mood` is the one tool that is computed rather than fetched: it samples a
+match's **public** thread and labels it with the server's own Bedrock call —
+counts out with labels never stored, public moots only and never a handle, and
+the moots framed as data rather than as instructions. With no model configured
+it answers from an offline lexicon and says `"method": "lexicon"` in its
+payload, so the tool is never simply down.
 
 ## Run it locally
 
@@ -71,7 +119,7 @@ make inspect MCP_URL=https://mcp.fanmoot.com/mcp
 ```
 
 Full client-by-client configuration — Claude, ChatGPT, Cursor, Alexa+ — lands
-with `S7-6`, once there are tools worth connecting to.
+with `S7-6`.
 
 ### What the transport does
 

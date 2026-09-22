@@ -27,11 +27,13 @@ and cheap enough to run twice in one turn.
 from __future__ import annotations
 
 import re
+import time
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 
+from app.fanmoot import cache as cache_module
 from app.fanmoot import endpoints
 from app.fanmoot.aliases import AMBIGUOUS, CLUB_ALIASES, COMPETITION_ALIASES
 from app.fanmoot.client import FanmootClient
@@ -377,3 +379,40 @@ async def load_catalogue(*, client: FanmootClient | None = None) -> Catalogue:
             break
 
     return Catalogue(clubs=clubs, leagues=leagues)
+
+
+_catalogue: Catalogue | None = None
+_catalogue_built_at = 0.0
+
+
+async def get_catalogue(*, client: FanmootClient | None = None) -> Catalogue:
+    """The process's catalogue, built on first use and rebuilt hourly.
+
+    ``load_catalogue`` is cheap in *requests* — every page is behind the
+    one-hour TTL and answers from cache or a ``304`` — but it still normalises
+    a thousand club names into four indexes each time it is called, and it sits
+    in front of every tool that takes a club name. Once an hour is the right
+    number of times to do that; once a tool call is not.
+
+    The rebuild window matches ``TTL_CATALOGUE`` deliberately: a club that
+    appears upstream becomes findable here on the same clock as it becomes
+    visible to ``/v1/clubs``.
+    """
+    global _catalogue, _catalogue_built_at
+
+    now = time.monotonic()
+    if _catalogue is None or now - _catalogue_built_at > cache_module.TTL_CATALOGUE:
+        _catalogue = await load_catalogue(client=client)
+        _catalogue_built_at = now
+    return _catalogue
+
+
+def reset_catalogue() -> None:
+    """Test hook, and the lifespan's: forget the indexed catalogue.
+
+    Reset alongside the HTTP cache, or a test that replays a different Fanmoot
+    would resolve names against the one the previous test recorded.
+    """
+    global _catalogue, _catalogue_built_at
+    _catalogue = None
+    _catalogue_built_at = 0.0

@@ -196,8 +196,8 @@ async def test_every_call_is_recorded_with_its_outcome(
     ``S4-1`` turns this into an insert; the shape is already the table's."""
 
     @mcp_server.tool()
-    async def live_scores(competition: str) -> str:
-        """Scores."""
+    async def competition_scores(competition: str) -> str:
+        """Scores. Named around the real `live_scores`, which `S3` registers."""
         if competition == "the moon":
             raise ValueError("no football there")
         return "two-all"
@@ -207,13 +207,13 @@ async def test_every_call_is_recorded_with_its_outcome(
         ClientSession(read, write) as session,
     ):
         await session.initialize()
-        await session.call_tool("live_scores", {"competition": "the premier league"})
-        await session.call_tool("live_scores", {"competition": "the moon"})
+        await session.call_tool("competition_scores", {"competition": "the premier league"})
+        await session.call_tool("competition_scores", {"competition": "the moon"})
 
     recorded = telemetry.recent()
     assert [(call.tool, call.status) for call in recorded] == [
-        ("live_scores", "ok"),
-        ("live_scores", "error"),
+        ("competition_scores", "ok"),
+        ("competition_scores", "error"),
     ]
     assert all(call.duration_ms >= 0 for call in recorded)
     # No grant exists before `S4`, and the read tools take no credential — so

@@ -159,6 +159,15 @@ async def test_get_moot_returns_a_thread(replay: Replay) -> None:
     assert str(thread.moot.id) == MOOT_ID
 
 
+async def test_get_moot_by_short_id_reads_the_same_thread(replay: Replay) -> None:
+    """``fanmoot.com/m/HU6yREc6mJ`` is the id a fan can read out, and the only
+    one they will ever have to hand — ``read_thread`` takes either (``S3-5``)."""
+    thread = await endpoints.get_moot_by_short_id("HU6yREc6mJ")
+
+    assert isinstance(thread, ThreadOut)
+    assert thread.moot.short_id == "HU6yREc6mJ"
+
+
 async def test_list_replies(replay: Replay) -> None:
     page = await endpoints.list_replies(MOOT_ID)
 
@@ -291,6 +300,7 @@ async def test_no_wrapper_is_left_untested() -> None:
         "match_moots",
         "get_feed",
         "get_moot",
+        "get_moot_by_short_id",
         "list_replies",
         "search",
         "list_updates",

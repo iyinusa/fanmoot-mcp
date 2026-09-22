@@ -30,6 +30,13 @@ os.environ.setdefault(
 os.environ.setdefault("FMCP_PUBLIC_BASE_URL", "http://testserver")
 os.environ.setdefault("FMCP_FANMOOT_API_BASE_URL", "https://fanmoot.test")
 os.environ.setdefault("FMCP_SECRET_ENCRYPTION_KEY", "")
+# No model id means `match_mood` answers from the offline lexicon in `app.mood`
+# rather than reaching for Bedrock — the suite is offline, and a test that
+# depended on a live model would be a test that failed on a train.
+os.environ.setdefault("FMCP_BEDROCK_MODEL_ID", "")
+# Kick-off times are spoken in a fixed zone, so "half past three" means the
+# same thing in CI as it does on a laptop in Lagos.
+os.environ.setdefault("FMCP_VOICE_TIMEZONE", "Europe/London")
 
 import asyncio  # noqa: E402
 
@@ -39,6 +46,7 @@ import uvicorn  # noqa: E402
 
 from app.fanmoot import cache  # noqa: E402
 from app.fanmoot import client as fanmoot_client  # noqa: E402
+from app.fanmoot import names as fanmoot_names  # noqa: E402
 from app.fanmoot.names import Catalogue, load_catalogue  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.mcp import telemetry  # noqa: E402
@@ -69,6 +77,7 @@ def replay() -> Iterator[Replay]:
     depend on which tests ran first.
     """
     cache.reset_cache()
+    fanmoot_names.reset_catalogue()
     tape = Replay.from_fixtures()
     fanmoot_client.set_client(
         fanmoot_client.FanmootClient(base_url="https://fanmoot.test", transport=tape.transport())
@@ -76,6 +85,7 @@ def replay() -> Iterator[Replay]:
     yield tape
     fanmoot_client.set_client(None)
     cache.reset_cache()
+    fanmoot_names.reset_catalogue()
 
 
 @pytest.fixture

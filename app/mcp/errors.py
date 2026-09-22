@@ -24,6 +24,8 @@ types exist.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import ValidationError
 
 from app.fanmoot.client import (
@@ -50,6 +52,25 @@ _UNKNOWN_TOOL = "There is no tool called {name} on this server."
 _MAX_SPOKEN_FIELDS = 3
 
 
+class ToolInputError(Exception):
+    """Something the fan said that a tool could not act on, already in words.
+
+    Raised by the read tools in ``S3`` when a name resolves to three clubs, a
+    match cannot be found between two of them, or a moot id is not a moot id.
+    It carries the sentence to speak — "Do you mean Arsenal, Aston Villa or
+    Athletic Club?" — because the tool is the only layer that knows which
+    question to ask.
+
+    It is an *execution* error, not a protocol one: the model hears the
+    question while the turn is still open and can ask the fan (``S2-6``,
+    HAD-7).
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
 def unwrap(exc: BaseException) -> BaseException:
     """The exception a tool actually raised, past FastMCP's wrapper.
 
@@ -67,6 +88,11 @@ def speakable(exc: BaseException, *, tool: str) -> str:
     "exception". A caller may hand the result straight to a model.
     """
     cause = unwrap(exc)
+
+    # A tool that already knows what to say says it. This is the disambiguation
+    # question, and it is the most common non-happy path on the whole surface.
+    if isinstance(cause, ToolInputError):
+        return cause.message
 
     if isinstance(cause, ValidationError):
         return _from_validation_error(cause)
@@ -102,6 +128,12 @@ def _from_validation_error(exc: ValidationError) -> str:
         field = ".".join(str(part) for part in error["loc"]) or "input"
         if error["type"] == "missing":
             missing.append(field)
+        elif error["type"].startswith(("greater_than", "less_than")):
+            # A bound, not a type: the model asked for fifty takes and the cap
+            # is twenty (HAD-7, `S3-9`). Saying the bound is what lets it ask
+            # again correctly, where "I could not make sense of limit" would
+            # have it guess.
+            return _from_bound(field, error)
         else:
             wrong.append(field)
 
@@ -110,6 +142,15 @@ def _from_validation_error(exc: ValidationError) -> str:
     if wrong and not missing:
         return f"I could not make sense of {_join(wrong)}. Say that again?"
     return f"I still need {_join(missing)}, and I could not make sense of {_join(wrong)}."
+
+
+def _from_bound(field: str, error: Any) -> str:
+    """A range violation, as the sentence that teaches the bound."""
+    limit = (error.get("ctx") or {}).get("le") or (error.get("ctx") or {}).get("ge")
+    spoken = field.replace("_", " ")
+    if error["type"].startswith("less_than"):
+        return f"I can manage {spoken} up to {limit} at a time. Ask for fewer?"
+    return f"{spoken.capitalize()} has to be at least {limit}."
 
 
 def _join(fields: list[str]) -> str:

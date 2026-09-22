@@ -57,6 +57,11 @@ dev = [
     "types-passlib",
     "respx>=0.21",          # records and replays the upstream /v1 calls (HAD-14)
     "asgi-lifespan>=2.1",   # runs startup/shutdown hooks in tests
+    # The OAuth store, substituted (`S4-15`). SQLite in memory, so the suite
+    # exercises the real models and the real queries — an authorization code
+    # really is found by its hash, a replayed refresh token really does revoke a
+    # family — without a `postgres:` service in CI. See tests/conftest.py.
+    "aiosqlite>=0.20",
     "python-dotenv>=1.0",   # conftest reads .env before importing app
 ]
 

@@ -25,10 +25,16 @@ from mcp.types import TextContent, Tool
 
 
 @asynccontextmanager
-async def session_at(url: str) -> AsyncIterator[ClientSession]:
-    """An initialised MCP session against a running server."""
+async def session_at(
+    url: str, *, headers: dict[str, str] | None = None
+) -> AsyncIterator[ClientSession]:
+    """An initialised MCP session against a running server.
+
+    ``headers`` is how an `S4` test presents a bearer token: the same session,
+    the same transport, with the credential a linked client would send.
+    """
     async with (
-        streamablehttp_client(url) as (read, write, _),
+        streamablehttp_client(url, headers=headers) as (read, write, _),
         ClientSession(read, write) as session,
     ):
         await session.initialize()

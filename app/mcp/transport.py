@@ -39,6 +39,7 @@ from app.logging_config import get_logger
 from app.mcp.events import InMemoryEventStore
 from app.mcp.security import OriginValidation
 from app.mcp.server import FanmootMCP
+from app.oauth import bearer
 from app.settings import Settings
 
 log = get_logger("mcp.transport")
@@ -77,14 +78,24 @@ def build_session_manager(server: FanmootMCP, settings: Settings) -> StreamableH
 
 
 def build_route(manager: StreamableHTTPSessionManager, settings: Settings) -> Route:
-    """The ``/mcp`` route, with origin validation wrapped around it.
+    """The ``/mcp`` route: origin validation, then authorization, then the transport.
 
     ``DELETE`` is in the method list because ending a session is part of the
     transport: a client that closes cleanly frees its session immediately
     rather than leaving it to the idle timeout.
+
+    The order of the two wrappers is deliberate. Origin validation is outermost
+    because it is the cheapest check and the one that must hold whatever else is
+    true — a browser on a hostile origin is refused before a token is looked up
+    in the database. Authorization (`S4-9`) sits inside it: it verifies a bearer
+    token if one was sent, publishes it to the auth context, and answers a
+    ``tools/call`` that needs a scope the caller has not got with a 401 or 403
+    carrying the RFC 9728 challenge. A call to one of the twelve read tools
+    passes through both untouched, which is the property that keeps "what's the
+    score" answerable without linking an account.
     """
     endpoint = OriginValidation(
-        manager.handle_request,
+        bearer.protect(manager.handle_request, settings),
         settings.mcp_allowed_origin_list,
         allow_loopback=not settings.is_production,
     )

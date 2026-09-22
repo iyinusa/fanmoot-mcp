@@ -1,0 +1,75 @@
+{# Create an account without leaving the flow — `S4-11`, the creator's explicit
+   requirement.
+
+   Note the path: `/oauth/register` is the RFC 7591 DCR endpoint, so the *fan*
+   sign-up page is `/oauth/signup` (HAD-5).
+
+   Date of birth and country are asked for because Fanmoot requires them: the
+   minimum age depends on the country, and the country doubles as the fan's
+   national team from day one. Handle is optional — Fanmoot derives one from the
+   name, and registration must not fail on a handle nobody chose. #}
+{% extends "base.html" %}
+{% block title %}Create a Fanmoot account{% endblock %}
+{% block body %}
+<div class="tabs">
+  <a class="tab" href="{{ login_url }}">Sign in</a>
+  <span class="tab" aria-current="page">Create account</span>
+</div>
+
+<h1>Create your Fanmoot account</h1>
+<p class="lede">Brand new? Sign up here and carry straight on — you will be back in
+one step.</p>
+
+{% if error %}
+<p class="alert" role="alert">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="/oauth/signup" novalidate>
+  <input type="hidden" name="flow" value="{{ flow }}">
+
+  <div class="field">
+    <label for="name">Your name</label>
+    <input id="name" name="name" type="text" value="{{ values.get('name', '') }}"
+           autocomplete="name" required>
+  </div>
+
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" value="{{ values.get('email', '') }}"
+           autocomplete="email" inputmode="email" autocapitalize="none"
+           spellcheck="false" required>
+  </div>
+
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" required>
+  </div>
+
+  <div class="field">
+    <label for="date_of_birth">Date of birth</label>
+    <input id="date_of_birth" name="date_of_birth" type="date"
+           value="{{ values.get('date_of_birth', '') }}" autocomplete="bday" required>
+    <p class="hint">Fanmoot asks because the minimum age depends on where you are.</p>
+  </div>
+
+  <div class="field">
+    <label for="country_code">Country <span class="hint">(optional)</span></label>
+    <input id="country_code" name="country_code" type="text" maxlength="6"
+           value="{{ values.get('country_code', '') }}" autocomplete="country"
+           placeholder="GB-ENG" autocapitalize="characters" spellcheck="false">
+    <p class="hint">Two letters, or a UK home nation like GB-ENG. It is your national team too.</p>
+  </div>
+
+  <div class="field">
+    <label for="handle">Handle <span class="hint">(optional)</span></label>
+    <input id="handle" name="handle" type="text" maxlength="31"
+           value="{{ values.get('handle', '') }}" autocapitalize="none" spellcheck="false"
+           placeholder="thegunner">
+    <p class="hint">Leave it blank and Fanmoot picks one from your name.</p>
+  </div>
+
+  <div class="actions">
+    <button class="btn" type="submit">Create account and continue</button>
+  </div>
+</form>
+{% endblock %}

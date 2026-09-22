@@ -1,0 +1,403 @@
+/* Floodlit, the subset the OAuth pages need — HAD-11.
+ *
+ * Imported from `fanmoot/web/src/styles/tokens.css` rather than re-drawn, and
+ * cut to what four pages actually use: brand, surfaces, text, the field, the
+ * button, the radius and motion scales. A fan who signs in here should not
+ * notice they left Fanmoot.
+ *
+ * Theming follows the same rule as the source file, and the rule matters: every
+ * colour gets its value on bare `:root` first, is redefined under the dark media
+ * query behind a `:not([data-theme="light"])` guard, and again under an explicit
+ * `[data-theme="dark"]`. A colour whose only definition lives inside a media
+ * query is a colour that vanishes when the viewer's OS says the other thing.
+ *
+ * No web fonts. Lato is what Fanmoot uses, and one @font-face would be a
+ * render-blocking request on a page whose whole job is to take a password
+ * quickly — on a phone, on stadium wifi. The system stack is the fallback the
+ * source file already declares.
+ */
+
+:root {
+  --fm-blue: #0444c8;
+  --fm-blue-deep: #032f8c;
+  --fm-blue-soft: #e8eeff;
+  --fm-green: #409e46;
+  --fm-amber: #f2a73b;
+  --fm-red: #d93a3a;
+
+  --fm-bg: #f7f9fc;
+  --fm-surface: #ffffff;
+  --fm-line: rgb(11 15 20 / 0.10);
+  --fm-line-strong: rgb(11 15 20 / 0.18);
+  --fm-text: #0b0f14;
+  --fm-text-muted: #5b6672;
+  --fm-text-faint: #8a94a0;
+  --fm-accent: var(--fm-blue);
+  --fm-accent-text: #ffffff;
+  --fm-ring: rgb(4 68 200 / 0.45);
+  --fm-shadow: 0 1px 2px rgb(11 15 20 / 0.06), 0 8px 24px rgb(11 15 20 / 0.06);
+
+  --fm-font-body: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --fm-radius: 12px;
+  --fm-radius-sm: 8px;
+  --fm-radius-lg: 18px;
+  --fm-fast: 140ms;
+  --fm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --fm-bg: #0b0f14;
+    --fm-surface: #151b23;
+    --fm-line: rgb(255 255 255 / 0.10);
+    --fm-line-strong: rgb(255 255 255 / 0.20);
+    --fm-text: #f7f9fc;
+    --fm-text-muted: #9aa6b4;
+    --fm-text-faint: #6b7684;
+    --fm-blue-soft: rgb(4 68 200 / 0.18);
+    --fm-accent: #4d80ff;
+    --fm-accent-text: #05132e;
+    --fm-ring: rgb(77 128 255 / 0.55);
+    --fm-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+  }
+}
+
+:root[data-theme='dark'] {
+  --fm-bg: #0b0f14;
+  --fm-surface: #151b23;
+  --fm-line: rgb(255 255 255 / 0.10);
+  --fm-line-strong: rgb(255 255 255 / 0.20);
+  --fm-text: #f7f9fc;
+  --fm-text-muted: #9aa6b4;
+  --fm-text-faint: #6b7684;
+  --fm-blue-soft: rgb(4 68 200 / 0.18);
+  --fm-accent: #4d80ff;
+  --fm-accent-text: #05132e;
+  --fm-ring: rgb(77 128 255 / 0.55);
+  --fm-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  /* Mobile-first, and the 16px gutter is not decorative: this page is reached
+   * from a phone far more often than from a laptop. */
+  padding: 24px 16px 48px;
+  background: var(--fm-bg);
+  color: var(--fm-text);
+  font-family: var(--fm-font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+.shell {
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.brand__mark {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: var(--fm-blue);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.card {
+  background: var(--fm-surface);
+  border: 1px solid var(--fm-line);
+  border-radius: var(--fm-radius-lg);
+  box-shadow: var(--fm-shadow);
+  padding: 24px 20px;
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  line-height: 1.25;
+  font-weight: 900;
+  letter-spacing: -0.015em;
+}
+
+.lede {
+  margin: 0 0 20px;
+  color: var(--fm-text-muted);
+}
+
+label {
+  display: block;
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.hint {
+  margin: 6px 0 0;
+  color: var(--fm-text-faint);
+  font-size: 0.82rem;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='date'] {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  color: var(--fm-text);
+  background: var(--fm-bg);
+  border: 1px solid var(--fm-line-strong);
+  border-radius: var(--fm-radius-sm);
+  font: inherit;
+  transition: border-color var(--fm-fast) var(--fm-ease),
+    box-shadow var(--fm-fast) var(--fm-ease);
+}
+
+input:focus-visible,
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: none;
+  border-color: var(--fm-accent);
+  box-shadow: 0 0 0 3px var(--fm-ring);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 46px, so the primary action is a comfortable target on a phone. */
+  min-height: 46px;
+  width: 100%;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--fm-radius);
+  background: var(--fm-accent);
+  color: var(--fm-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--fm-fast) var(--fm-ease),
+    filter var(--fm-fast) var(--fm-ease);
+}
+
+.btn:hover {
+  filter: brightness(1.06);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn--quiet {
+  background: transparent;
+  color: var(--fm-text-muted);
+  border-color: var(--fm-line-strong);
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--fm-red);
+  border-color: var(--fm-red);
+  width: auto;
+  min-height: 40px;
+  font-size: 0.9rem;
+}
+
+.actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.alert {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: var(--fm-radius-sm);
+  border: 1px solid var(--fm-red);
+  /* Not colour alone: the border, the icon and the word carry it too, so the
+   * message still reads on a monochrome screen or to a colour-blind fan. */
+  background: rgb(217 58 58 / 0.08);
+  font-size: 0.92rem;
+}
+
+.alert--ok {
+  border-color: var(--fm-green);
+  background: rgb(64 158 70 / 0.10);
+}
+
+.alert--warn {
+  border-color: var(--fm-amber);
+  background: rgb(242 167 59 / 0.12);
+}
+
+.scopes {
+  margin: 0 0 4px;
+  padding: 0;
+  border: 0;
+}
+
+.scopes legend {
+  padding: 0;
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.scope {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--fm-line);
+  border-radius: var(--fm-radius-sm);
+  background: var(--fm-bg);
+}
+
+.scope input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--fm-accent);
+  flex: 0 0 auto;
+}
+
+.scope__text {
+  min-width: 0;
+}
+
+.scope__summary {
+  display: block;
+  font-weight: 700;
+  margin: 0;
+}
+
+.scope__detail {
+  display: block;
+  margin: 2px 0 0;
+  color: var(--fm-text-muted);
+  font-size: 0.86rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fm-blue-soft);
+  color: var(--fm-accent);
+  font-size: 0.74rem;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+.app-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app {
+  padding: 16px 0;
+  border-top: 1px solid var(--fm-line);
+}
+
+.app:first-child {
+  border-top: 0;
+}
+
+.app__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.app__name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.app__meta {
+  margin: 4px 0 8px;
+  color: var(--fm-text-faint);
+  font-size: 0.82rem;
+}
+
+.app__scopes {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  color: var(--fm-text-muted);
+  font-size: 0.88rem;
+}
+
+.foot {
+  margin: 20px 4px 0;
+  color: var(--fm-text-faint);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.foot a,
+.inline-link {
+  color: var(--fm-accent);
+}
+
+a {
+  color: var(--fm-accent);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.tab {
+  flex: 1 1 0;
+  text-align: center;
+  padding: 10px;
+  border: 1px solid var(--fm-line-strong);
+  border-radius: var(--fm-radius-sm);
+  text-decoration: none;
+  color: var(--fm-text-muted);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.tab[aria-current='page'] {
+  background: var(--fm-blue-soft);
+  border-color: var(--fm-accent);
+  color: var(--fm-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

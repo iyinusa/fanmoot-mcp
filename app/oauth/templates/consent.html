@@ -1,0 +1,82 @@
+{# Consent — the screen the whole milestone exists to put in front of a fan.
+
+   Two decisions worth naming:
+
+   **Per-scope checkboxes, not one Allow button.** "Let this thing use my Fanmoot
+   account" is not a single decision — reading who you are is not posting as you.
+   Everything requested is ticked by default, so the common path is one press, and
+   unticking is real: the grant records what was ticked, and a client that later
+   needs more is sent back through authorization for that one scope (`S4-12`).
+
+   **A "not you?" escape.** A living-room tablet is the normal case for a football
+   account, not the exotic one, and a consent screen that cannot be corrected is a
+   consent screen that gets the wrong answer. #}
+{% extends "base.html" %}
+{% block title %}Allow {{ client.client_name }}?{% endblock %}
+{% block body %}
+<h1>Allow {{ client.client_name }} to use your Fanmoot account?</h1>
+
+<p class="lede">
+  Signed in as <strong>&#64;{{ handle }}</strong>.
+  <a class="inline-link" href="/oauth/switch?flow_token={{ flow | urlencode }}">Not you?</a>
+</p>
+
+{% if fresh_account %}
+<p class="alert alert--ok" role="status">
+  Your account is created. Check your email to confirm the address — until you do,
+  Fanmoot may hold your first take for review.
+</p>
+{% endif %}
+
+{% if already_granted %}
+<p class="alert alert--warn" role="status">
+  You have connected {{ client.client_name }} before. Confirming replaces what it
+  can do with your choices below.
+</p>
+{% endif %}
+
+{% if error %}
+<p class="alert" role="alert">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="/oauth/consent">
+  <input type="hidden" name="flow" value="{{ flow }}">
+
+  <fieldset class="scopes">
+    <legend>It will be able to:</legend>
+    {% for scope in scopes %}
+    <div class="scope">
+      <input type="checkbox" id="scope-{{ loop.index }}" name="scope" value="{{ scope.name }}" checked>
+      <span class="scope__text">
+        <label class="scope__summary" for="scope-{{ loop.index }}">
+          {{ scope.summary }}
+          {% if scope.name in already_granted %}<span class="badge">already allowed</span>{% endif %}
+        </label>
+        <span class="scope__detail">{{ scope.detail }}</span>
+      </span>
+    </div>
+    {% endfor %}
+  </fieldset>
+
+  <p class="hint">
+    It can never read your email address, change your club, or see anything you
+    have not posted publicly. You can disconnect it at any time from
+    <a class="inline-link" href="/oauth/connected">connected apps</a>.
+  </p>
+
+  <div class="actions">
+    <button class="btn" type="submit" name="decision" value="allow">Allow</button>
+    <button class="btn btn--quiet" type="submit" name="decision" value="deny">Not now</button>
+  </div>
+</form>
+{% endblock %}
+{% block foot %}
+{% if client.client_uri or client.policy_uri or client.tos_uri %}
+About {{ client.client_name }}:
+{% if client.client_uri %}<a href="{{ client.client_uri }}" rel="noopener noreferrer nofollow">website</a>{% endif %}
+{% if client.policy_uri %} · <a href="{{ client.policy_uri }}" rel="noopener noreferrer nofollow">privacy</a>{% endif %}
+{% if client.tos_uri %} · <a href="{{ client.tos_uri }}" rel="noopener noreferrer nofollow">terms</a>{% endif %}
+<br>
+{% endif %}
+Fanmoot has not vetted this app. It told us its name and where to send you back.
+{% endblock %}

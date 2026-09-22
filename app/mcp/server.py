@@ -115,6 +115,7 @@ class FanmootMCP(FastMCP[Any]):
         """
         started = time.perf_counter()
         authenticated = telemetry.authenticated_now()
+        grant_id = telemetry.grant_now()
 
         try:
             result = await self._tool_manager.call_tool(
@@ -126,6 +127,7 @@ class FanmootMCP(FastMCP[Any]):
                 duration_ms=(time.perf_counter() - started) * 1000,
                 status="error",
                 authenticated=authenticated,
+                grant_id=grant_id,
             )
             return CallToolResult(
                 content=[TextContent(type="text", text=errors.speakable(exc, tool=name))],
@@ -137,6 +139,7 @@ class FanmootMCP(FastMCP[Any]):
             duration_ms=(time.perf_counter() - started) * 1000,
             status="ok",
             authenticated=authenticated,
+            grant_id=grant_id,
         )
         return result
 

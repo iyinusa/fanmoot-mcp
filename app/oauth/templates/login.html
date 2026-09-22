@@ -1,0 +1,50 @@
+{# Sign in — `S4-10`.
+
+   The password goes to Fanmoot's own `/v1/auth/login` and is not stored here
+   (HAD-4). The page says so, because a fan being asked for a password on a
+   subdomain they have never seen is entitled to know where it goes.
+
+   `autocomplete` is set properly on both fields so a password manager fills
+   them, which is the single biggest thing that makes a sign-in inside a linking
+   flow survive contact with a real person. #}
+{% extends "base.html" %}
+{% block title %}Sign in to Fanmoot{% endblock %}
+{% block body %}
+<div class="tabs">
+  <span class="tab" aria-current="page">Sign in</span>
+  <a class="tab" href="{{ signup_url }}">Create account</a>
+</div>
+
+<h1>Connect Fanmoot to {{ client_name }}</h1>
+<p class="lede">Sign in with your Fanmoot account. Next you will choose exactly what
+{{ client_name }} is allowed to do.</p>
+
+{% if error %}
+<p class="alert" role="alert">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="/oauth/login" novalidate>
+  <input type="hidden" name="flow" value="{{ flow }}">
+
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" value="{{ email }}"
+           autocomplete="username" inputmode="email" autocapitalize="none"
+           spellcheck="false" required>
+  </div>
+
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password"
+           autocomplete="current-password" required>
+    <p class="hint">Your password goes straight to fanmoot.com. This server never stores it.</p>
+  </div>
+
+  <div class="actions">
+    <button class="btn" type="submit">Sign in</button>
+  </div>
+</form>
+{% endblock %}
+{% block foot %}
+<a href="https://fanmoot.com/forgot-password">Forgotten your password?</a>
+{% endblock %}

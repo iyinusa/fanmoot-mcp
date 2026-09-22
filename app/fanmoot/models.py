@@ -240,6 +240,32 @@ class UserResponse(_Shape):
     created_at: datetime | None = None
 
 
+class AuthTokens(_Shape):
+    """What ``/v1/auth/login``, ``/register`` and ``/refresh`` hand back.
+
+    ``refresh_token`` is populated only because this server asks for it:
+    Fanmoot delivers it as an httpOnly cookie by default and puts it in the body
+    for ``?in_body=true``, which is the native-client path and the only one
+    available to a server with no cookie jar (`S4-8`).
+
+    The access token is 15 minutes and is never stored (HAD-3). The refresh
+    token is the long-lived credential and is encrypted at rest the moment it
+    arrives.
+    """
+
+    access_token: str
+    token_type: str = "Bearer"  # noqa: S105 - RFC 6750 scheme name, not a secret
+    expires_in: int
+    refresh_token: str | None = None
+
+
+class AuthResult(_Shape):
+    """A completed sign-in or sign-up: who it is, and the pair of tokens."""
+
+    user: UserResponse
+    tokens: AuthTokens
+
+
 class MembershipOut(_Shape):
     """Which club the fan is signed to, and for how long."""
 

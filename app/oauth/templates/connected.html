@@ -1,0 +1,46 @@
+{# Connected apps — `S4-13`.
+
+   Alexa and a client that registered itself two minutes ago appear the same way,
+   because to a fan they are the same thing: something that can post under their
+   handle. The tier is shown as small print for an operator's benefit, not as a
+   hierarchy.
+
+   Disconnecting is a POST, and the session cookie is `SameSite=Lax`, so a
+   cross-site form cannot carry it — which is why there is no separate CSRF token
+   on the page. #}
+{% extends "base.html" %}
+{% block title %}Your connected apps{% endblock %}
+{% block body %}
+<h1>Connected apps</h1>
+<p class="lede">Signed in as <strong>&#64;{{ handle }}</strong>. These can use your
+Fanmoot account until you disconnect them.</p>
+
+{% if not grants %}
+<p class="alert alert--ok" role="status">Nothing is connected to your account right now.</p>
+{% else %}
+<ul class="app-list">
+  {% for grant in grants %}
+  <li class="app">
+    <div class="app__head">
+      <h2 class="app__name">{{ grant.name }}</h2>
+      {% if grant.tier != 'static' %}<span class="badge">self-registered</span>{% endif %}
+    </div>
+    <p class="app__meta">
+      Connected {{ grant.connected_at.strftime('%-d %B %Y') if grant.connected_at else 'recently' }}{% if grant.last_used_at %} · last used {{ grant.last_used_at.strftime('%-d %B %Y') }}{% else %} · not used yet{% endif %}
+    </p>
+    <ul class="app__scopes">
+      {% for scope in grant.scopes %}<li>{{ scope.summary }}</li>{% endfor %}
+    </ul>
+    <form method="post" action="/oauth/connected/disconnect">
+      <input type="hidden" name="grant_id" value="{{ grant.id }}">
+      <button class="btn btn--danger" type="submit">Disconnect {{ grant.name }}</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}
+{% block foot %}
+<a href="/oauth/signout">Sign out of this device</a> — that leaves your connected
+apps alone.
+{% endblock %}

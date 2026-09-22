@@ -18,7 +18,9 @@ rather than storing them in plaintext (HAD-3).
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
+from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -113,6 +115,68 @@ class Settings(BaseSettings):
     # twenty, because none of these moots is read aloud.
     mood_sample_size: int = 40
 
+    # ── OAuth 2.1 authorization server (S4, HAD-4) ───────────────────────────
+    # The static, pre-seeded clients — tier 1 of HAD-5, which in practice means
+    # Alexa. A JSON array, upserted by `client_id` at boot so a redeploy never
+    # orphans credentials Alexa already holds:
+    #
+    #   [{"client_id": "amzn1...", "client_secret": "...", "client_name": "Alexa+",
+    #     "redirect_uris": ["https://pitangui.amazon.com/api/skill/link/M2...", ...],
+    #     "scopes": "fan.read moot.write predict.write fan.write"}]
+    #
+    # Empty is a working configuration: every other client self-registers
+    # (`S4-16`), so a server with nothing here still serves Claude, ChatGPT,
+    # Cursor and the Inspector — it just cannot serve Alexa, which has no DCR.
+    oauth_clients: str = ""
+
+    # Access token 1 h, refresh 90 days — `S4-7`. The refresh token is not
+    # optional: Alexa's docs make it mandatory, and without one a fan re-links
+    # their account every hour.
+    oauth_access_token_ttl_s: int = 3600
+    oauth_refresh_token_ttl_days: int = 90
+
+    # An authorization code lives 60 seconds and is single-use (`S4-6`). It
+    # travels through a browser redirect and is spent immediately by a client
+    # that already has it, so a longer life is only ever a longer window for a
+    # code left in someone's history to be replayed.
+    oauth_code_ttl_s: int = 60
+
+    # How long the browser leg — sign in, then consent — may take before the
+    # pending authorization it is carrying is refused (`app.oauth.flow`). Long
+    # enough to read a consent screen and find a password manager; short enough
+    # that a form left open in a tab overnight cannot be submitted in the
+    # morning.
+    oauth_flow_ttl_s: int = 900
+
+    # Dynamic Client Registration (`S4-16`). On by default, because a public
+    # MCP server that cannot be self-registered against is an Alexa add-on
+    # wearing an MCP costume (§2.2). Turn it off and tier 2 closes: only the
+    # clients in FMCP_OAUTH_CLIENTS can connect.
+    oauth_dcr_enabled: bool = True
+
+    # A self-registered client that never completes a grant is reaped after
+    # this many days. Open registration means anybody can create a row; this is
+    # what stops the table being a place to leave litter (`S4-16`).
+    oauth_dcr_client_ttl_days: int = 30
+
+    # How long a Fanmoot access token minted by the exchange is held in process
+    # before a fresh one is fetched (`S4-8`). Fanmoot's own access tokens live
+    # 15 minutes; this is deliberately a little under, so a cached token is
+    # never handed out inside its last few seconds and then rejected upstream
+    # mid-turn.
+    oauth_upstream_access_ttl_s: int = 840
+
+    # Rate limits and lockout (`S4-14`), per client address, per window.
+    # Deliberately generous for /token — a household behind one NAT refreshing
+    # several sessions is legitimate — and tight for the login form and DCR,
+    # which are where a password is guessed and where rows are created.
+    oauth_login_limit: int = 10
+    oauth_login_window_s: int = 900
+    oauth_token_limit: int = 120
+    oauth_token_window_s: int = 60
+    oauth_register_limit: int = 5
+    oauth_register_window_s: int = 3600
+
     # ── Secrets ──────────────────────────────────────────────────────────────
     # The Fernet key that wraps a fan's upstream Fanmoot refresh token at rest
     # (HAD-3). Empty is a *working* configuration for everything that does not
@@ -134,6 +198,19 @@ class Settings(BaseSettings):
         "mcp_max_sessions",
         "bedrock_timeout_s",
         "mood_sample_size",
+        "oauth_access_token_ttl_s",
+        "oauth_refresh_token_ttl_days",
+        "oauth_code_ttl_s",
+        "oauth_flow_ttl_s",
+        "oauth_dcr_enabled",
+        "oauth_dcr_client_ttl_days",
+        "oauth_upstream_access_ttl_s",
+        "oauth_login_limit",
+        "oauth_login_window_s",
+        "oauth_token_limit",
+        "oauth_token_window_s",
+        "oauth_register_limit",
+        "oauth_register_window_s",
         mode="before",
     )
     @classmethod
@@ -186,6 +263,34 @@ class Settings(BaseSettings):
             )
         return url
 
+    @field_validator("oauth_clients")
+    @classmethod
+    def _parse_oauth_clients(cls, v: str) -> str:
+        """Refuse malformed JSON at boot rather than at Alexa's first redirect.
+
+        The *shape* of each entry is checked in ``app.oauth.clients``, which
+        knows what a client is. What is checked here is only that the variable
+        parses at all and is a list — because the failure mode this closes is a
+        stray comma in a Dokploy text box producing a server that boots
+        healthy, serves football, and cannot link a single account.
+        """
+        raw = v.strip()
+        if not raw:
+            return ""
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"FMCP_OAUTH_CLIENTS is not valid JSON ({exc.msg} at position {exc.pos}). "
+                'Expected a JSON array: [{"client_id": "...", "redirect_uris": ["..."]}]'
+            ) from None
+        if not isinstance(parsed, list):
+            raise ValueError(
+                "FMCP_OAUTH_CLIENTS must be a JSON *array* of client objects, "
+                f"got {type(parsed).__name__}."
+            )
+        return raw
+
     # ── Derived views ────────────────────────────────────────────────────────
     @property
     def is_production(self) -> bool:
@@ -221,6 +326,42 @@ class Settings(BaseSettings):
         """
         configured = [part.strip() for part in self.mcp_allowed_origins.split(",")]
         return [self.public_base_url, *(origin for origin in configured if origin)]
+
+    @property
+    def oauth_client_specs(self) -> list[dict[str, Any]]:
+        """``FMCP_OAUTH_CLIENTS`` as a list of raw objects, already known to parse.
+
+        Entries that are not objects are dropped here rather than in the
+        seeder: a bare string in that array is a typo, and the seeder's job is
+        to validate fields, not to wonder what a string client is.
+        """
+        if not self.oauth_clients.strip():
+            return []
+        parsed = json.loads(self.oauth_clients)
+        return [entry for entry in parsed if isinstance(entry, dict)]
+
+    @property
+    def resource_uri(self) -> str:
+        """The canonical URI of the protected resource — RFC 8707's ``resource``.
+
+        The MCP endpoint itself, not this server's root: that is what a client
+        is asking for a token *for*, what ``addon.json`` names, and what the
+        protected-resource metadata has to echo exactly (`S4-2`). A token
+        issued for anything else is refused at the mount.
+        """
+        return self.url_for("/mcp")
+
+    @property
+    def resource_metadata_url(self) -> str:
+        """Where a 401 tells a client to look — RFC 9728's path-insertion form.
+
+        The resource is ``…/mcp``, so its metadata lives at
+        ``/.well-known/oauth-protected-resource/mcp``. The bare path is served
+        as well, because Alexa's account linking reads that one (`S4-2`), but
+        the challenge names the spec-derived URL so a client that computes it
+        rather than reading it finds the same document.
+        """
+        return self.url_for("/.well-known/oauth-protected-resource/mcp")
 
     def url_for(self, path: str) -> str:
         """Absolute URL on *this* server — the OAuth documents are full of them."""

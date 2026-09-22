@@ -1,0 +1,32 @@
+{# Sign in to manage connected apps — the same form as the linking flow, with no
+   authorization request behind it. Separate template rather than a flag on
+   `login.html`, because every sentence on the page is different: nobody is
+   asking for anything, and the fan came here to take something away. #}
+{% extends "base.html" %}
+{% block title %}Your connected apps{% endblock %}
+{% block body %}
+<h1>Sign in to manage connected apps</h1>
+<p class="lede">See everything that can use your Fanmoot account, and disconnect
+anything you no longer want.</p>
+
+{% if error %}
+<p class="alert" role="alert">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="/oauth/connected/signin" novalidate>
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="username"
+           inputmode="email" autocapitalize="none" spellcheck="false" required>
+  </div>
+
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+  </div>
+
+  <div class="actions">
+    <button class="btn" type="submit">Sign in</button>
+  </div>
+</form>
+{% endblock %}

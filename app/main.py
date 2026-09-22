@@ -7,7 +7,9 @@ from ``https://mcp.fanmoot.com`` by this app (HAD-2, HAD-4). The MCP server
 mounts as an ASGI route rather than running as its own service, so a client
 that has completed an OAuth flow is already talking to the right origin.
 
-At ``S2`` ``/healthz`` and ``/mcp`` exist; the OAuth half arrives with ``S4``.
+``/healthz``, ``/mcp``, the OAuth 2.1 authorization server (`S4`) and the three
+discovery documents under ``/.well-known`` are all here, in that order of
+addition.
 
 **Everything is built per application, not per process.** The MCP session
 manager owns a task group that can be started exactly once, so a module-level
@@ -25,8 +27,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app import __version__, health
-from app.db import dispose_engine
+from app import __version__, audit, health
+from app.db import dispose_engine, get_sessionmaker
 from app.fanmoot import cache as fanmoot_cache
 from app.fanmoot import names as fanmoot_names
 from app.fanmoot.client import close_client, get_client
@@ -34,6 +36,12 @@ from app.logging_config import configure_logging, get_logger
 from app.mcp import transport
 from app.mcp.server import get_server
 from app.middleware import RequestIdMiddleware
+from app.oauth import clients as oauth_clients
+from app.oauth import dcr as oauth_dcr
+from app.oauth import metadata as oauth_metadata
+from app.oauth import router as oauth_router
+from app.oauth import upstream as oauth_upstream
+from app.oauth.errors import FlowRefusal
 from app.settings import Settings, get_settings
 
 #: Icons, and from `S8` the brand assets an add-on manifest points at. Served
@@ -57,6 +65,22 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # a worker that started with a warm index and a cold cache would resolve
     # names against a Fanmoot it has not spoken to (`S3-2`).
     fanmoot_names.reset_catalogue()
+    # Cached Fanmoot access tokens belong to the process that minted them
+    # (`S4-8`), so a restarted worker starts from the encrypted refresh tokens
+    # rather than from whatever a previous process held.
+    oauth_upstream.reset_cache()
+
+    # Alexa's credentials, upserted by client_id (`S4-5`). Best-effort on
+    # purpose: a database that is down at boot must not take the read surface —
+    # which needs no database at all — down with it. `/healthz` already reports
+    # an unreachable database, and the log line below is what an operator greps
+    # when account linking is failing.
+    await _seed_oauth_clients()
+
+    # Every tool call is written through to `tool_calls` from here on (`S4-1`).
+    # Installed in the lifespan and nowhere else, which is what keeps the test
+    # suite's read-tool tests free of a database.
+    audit.install_tool_call_sink()
 
     log = get_logger("startup")
     log.info(
@@ -75,6 +99,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # after the last one has been answered.
     async with transport.running(app.state.mcp_session_manager):
         yield
+
+    # Telemetry inserts are scheduled rather than awaited (`app.audit`), so the
+    # last few are still in flight here. Dropped rather than waited on for long:
+    # a latency row is not worth delaying a shutdown that a deploy is waiting for.
+    for task in audit.pending_writes():
+        task.cancel()
 
     await close_client()
     await dispose_engine()
@@ -104,6 +134,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
 
     app.include_router(health.router)
+
+    # The OAuth 2.1 authorization server (`S4`, HAD-4). Three routers because
+    # they answer to three different specifications: the discovery documents
+    # (RFC 9728, RFC 8414, OIDC Discovery), dynamic client registration
+    # (RFC 7591/7592), and the flow itself plus the pages a fan sees.
+    app.include_router(oauth_metadata.router)
+    app.include_router(oauth_dcr.router)
+    app.include_router(oauth_router.router)
+    # A refusal that must not be redirected renders a page on this origin —
+    # see `app.oauth.errors.FlowRefusal` on why redirecting it would be an open
+    # redirector.
+    app.add_exception_handler(FlowRefusal, oauth_router.flow_refusal_handler)
+
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     session_manager = transport.build_session_manager(get_server(), settings)
@@ -111,6 +154,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.router.routes.append(transport.build_route(session_manager, settings))
 
     return app
+
+
+async def _seed_oauth_clients() -> None:
+    """Upsert the static clients, and reap self-registered ones that lapsed.
+
+    Both in one place because both are boot-time housekeeping on one table, and
+    both are wrapped in the same refusal to bring the process down: the failure
+    mode of a missing static client is "Alexa cannot link", which is bad, and the
+    failure mode of raising here is "nothing works at all", which is worse.
+    """
+    log = get_logger("startup")
+
+    # Nothing to do when this server cannot hold a fan's Fanmoot session at all
+    # (HAD-3): with no encryption key the whole authorization half is closed, so
+    # seeding clients nobody can link against and reaping registrations that
+    # cannot be created is work whose only output would be a database error in
+    # the log of a server that is behaving exactly as configured.
+    if not get_settings().can_store_grants:
+        log.info("oauth_client_seeding_skipped", reason="no encryption key configured")
+        return
+
+    try:
+        async with get_sessionmaker()() as session:
+            await oauth_clients.seed_static(session)
+            await oauth_clients.reap_stale(session)
+    except Exception as exc:
+        log.error(
+            "oauth_client_seeding_failed",
+            error_type=type(exc).__name__,
+            error=str(exc),
+            hint="account linking will fail until this is fixed; the read tools are unaffected",
+        )
 
 
 app = create_app()

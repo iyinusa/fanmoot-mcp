@@ -1,0 +1,16 @@
+{# One page for every dead end: an unknown client, an unregistered redirect URI,
+   an expired flow, a server with no encryption key, a successful sign-out.
+
+   It never echoes a URI or a client id supplied by the caller, and it never
+   offers a link onward to one. That is the point of rendering here rather than
+   redirecting: the only safe next step is the app the fan started from, and the
+   page says so in words rather than as a link somebody else chose. #}
+{% extends "base.html" %}
+{% block title %}{{ headline }}{% endblock %}
+{% block body %}
+<h1>{{ headline }}</h1>
+<p class="alert{% if tone == 'ok' %} alert--ok{% elif tone == 'warn' %} alert--warn{% endif %}" role="status">
+  {{ detail }}
+</p>
+<p class="hint">If you were connecting an app, start again from the app itself.</p>
+{% endblock %}

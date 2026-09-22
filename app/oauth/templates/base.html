@@ -1,0 +1,47 @@
+{#
+  The shell every OAuth page shares.
+
+  Three things it does deliberately:
+
+  * `lang="en-GB"`, `viewport`, one `<h1>` per page and a skip-free single-column
+    layout — this is a form that takes a password, so it is the least
+    experimental page in the product.
+  * `robots: noindex, nofollow`. A consent screen is not content; a search engine
+    holding one is a URL with a live flow token in it.
+  * No script. Nothing on these pages needs JavaScript, and a page that takes a
+    credential is the last place to add a dependency that can fail or be
+    injected. `referrer` is stripped in the meta as well as the header, because a
+    referrer leaking a flow token to a client's own site would undo the point of
+    signing it.
+#}<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
+<title>{% block title %}Fanmoot{% endblock %}</title>
+<link rel="icon" href="/static/icons/thread.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/oauth.css?v={{ version }}">
+</head>
+<body>
+<div class="shell">
+  <div class="brand">
+    <span class="brand__mark" aria-hidden="true">F</span>
+    <span>Fanmoot</span>
+  </div>
+
+  <main class="card">
+    {% block body %}{% endblock %}
+  </main>
+
+  <p class="foot">
+    {% block foot %}
+    Football conversation, one club at a time.
+    <a href="https://fanmoot.com">fanmoot.com</a>
+    {% endblock %}
+  </p>
+</div>
+</body>
+</html>

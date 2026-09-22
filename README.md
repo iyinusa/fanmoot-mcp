@@ -7,11 +7,11 @@ sign in *or sign up* from the client and then post in their own name.
 
 Spec era **`2025-11-25`**, Streamable HTTP, on `POST|GET /mcp`.
 
-> **In progress.** This README fills out as the milestones land. Through `S3`
-> the server answers football questions to anyone who connects; posting,
-> replying and predicting need the OAuth server that arrives with `S4` and the
-> tools that sit on it in `S5`. See `../Amazon Hackathon.md` §6 for the
-> milestone list.
+> **In progress.** This README fills out as the milestones land. Through `S4`
+> the server answers football questions to anyone who connects and a fan can
+> link their Fanmoot account to any client; the tools that *use* that link —
+> posting, replying, reacting, predicting — arrive with `S5`. See
+> `../Amazon Hackathon.md` §6 for the milestone list.
 
 ## What it talks to
 
@@ -68,6 +68,63 @@ the moots framed as data rather than as instructions. With no model configured
 it answers from an offline lexicon and says `"method": "lexicon"` in its
 payload, so the tool is never simply down.
 
+## Authentication
+
+The server is its **own OAuth 2.1 authorization server**. A fan signs in — or
+signs up — on a Fanmoot-branded page here, chooses what the client may do, and
+the client gets a token. It is never a Fanmoot access token: what a client holds
+is an opaque handle to a grant row, and the server exchanges it for a
+short-lived Fanmoot token per call. A leaked client token is revocable, expires
+in an hour, and is meaningless to `fanmoot.com`.
+
+| Endpoint | What |
+|---|---|
+| `/.well-known/oauth-protected-resource` | RFC 9728 — what `/mcp` is, and who authorizes it (also served at `…/oauth-protected-resource/mcp`) |
+| `/.well-known/oauth-authorization-server` | RFC 8414 — every endpoint, and `code_challenge_methods_supported: ["S256"]` |
+| `/.well-known/openid-configuration` | the same document, because some clients probe this path first |
+| `GET /authorize` | authorization code + PKCE (S256 only) |
+| `POST /token` | code exchange and rotating refresh |
+| `POST /oauth/register` | RFC 7591 dynamic client registration |
+| `GET /oauth/signup` | a **new fan** creating an account mid-flow |
+| `POST /oauth/revoke` | RFC 7009 |
+| `GET /oauth/connected` | a fan's connected apps, and a button to disconnect each |
+
+Four scopes, because "let this thing use my account" is not one decision:
+`fan.read`, `moot.write`, `predict.write`, `fan.write`. The consent screen names
+each one in the words a fan reads and lets them untick any of it; the grant
+records what was ticked, not what was asked for.
+
+### Any client, not just Alexa
+
+There are two tiers of client registration, and they land in the same table with
+the same scopes:
+
+- **Self-registering** — Claude, ChatGPT, Cursor and MCP Inspector register
+  themselves through **RFC 7591** at `POST /oauth/register`, or identify
+  themselves by a URL serving their own metadata (**SEP-991**, the mechanism
+  `2025-11-25` recommends). Registration is open, with the guards that implies:
+  per-address rate limiting, `https` redirect URIs plus `http://localhost` and
+  `http://127.0.0.1` for loopback callbacks, a server-generated `client_id`, and
+  a TTL that reaps registrations that never complete a grant.
+- **Pre-seeded** — Alexa+ has no dynamic registration, so its credentials come
+  from `FMCP_OAUTH_CLIENTS` and are upserted by `client_id` at every boot.
+  Register *every* redirect URI from the Developer Hub: the presented one is
+  matched exactly and never substituted for a default.
+
+### What a client sees without a token
+
+Nothing changes for the twelve read tools — they take no credential at all, and
+"what's the score" is answerable without linking anything. A call to a tool that
+acts as the fan comes back **401** with an RFC 9728 challenge naming the
+protected-resource document, which is what Alexa starts account linking from and
+what every other client discovers the authorization server from. A grant that is
+missing one scope gets **403 `insufficient_scope`** naming what to ask for, so a
+read-only link is upgraded rather than failed.
+
+Without `FMCP_SECRET_ENCRYPTION_KEY` the server will not hold a fan's Fanmoot
+session at all: `/authorize` answers 503 and the read tools carry on. That is the
+safe direction, and `/healthz` reports it as `grant_storage: disabled`.
+
 ## Run it locally
 
 ```bash
@@ -102,7 +159,14 @@ make record ARGS=-v   # …and print what each call returned
 
 The authenticated endpoints are not recorded live — doing so would write a real
 fan's handle and email into this repository — so their fixtures are hand-built
-from Fanmoot's own schemas and marked `synthetic` in the manifest.
+from Fanmoot's own schemas and marked `synthetic` in the manifest. `/v1/auth/*`
+is stubbed per test for the same reason, one step further: a recording of a
+sign-in is a recording of somebody's credentials being accepted.
+
+The OAuth tests need *rows*, so they substitute an in-memory SQLite database and
+create the schema from the models. That exercises the real queries — an
+authorization code really is found by its hash, a replayed refresh token really
+does revoke a family — and still leaves `make check` with nothing to install.
 
 ## Connect a client
 

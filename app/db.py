@@ -33,7 +33,7 @@ class Base(DeclarativeBase):
     """Declarative base. Every model subclasses this, and Alembic's autogenerate
     compares the database against ``Base.metadata`` — so a model that is never
     imported is a table that never gets migrated. ``app/models/__init__.py``
-    exists to import them all, and arrives with ``S4``."""
+    exists to import them all."""
 
 
 _engine: AsyncEngine | None = None
@@ -111,6 +111,27 @@ async def dispose_engine() -> None:
     if _engine is not None:
         await _engine.dispose()
     _engine = None
+    _sessionmaker = None
+
+
+def set_engine(engine: AsyncEngine | None) -> None:
+    """Install an engine — the test suite's hook, and nothing else's.
+
+    Mirrors ``app.fanmoot.client.set_client`` and ``app.mcp.server.set_server``.
+    The suite needs *rows* from ``S4`` onwards — an authorization code has to be
+    findable by its hash, and a replayed refresh token has to revoke a real
+    family — and it needs them without a database service in CI (see the note in
+    ``.github/workflows/check.yml``). So it substitutes an in-memory SQLite
+    engine here and creates the schema from ``Base.metadata``, which exercises
+    the actual models and the actual queries.
+
+    That is the only concession SQLite earns, and it is paid for in
+    ``app.models.base.as_utc``: SQLite drops the timezone off a
+    ``DateTime(timezone=True)``, so every deadline comparison in
+    ``app.oauth`` normalises what it reads.
+    """
+    global _engine, _sessionmaker
+    _engine = engine
     _sessionmaker = None
 
 

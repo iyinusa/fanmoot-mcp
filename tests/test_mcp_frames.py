@@ -216,17 +216,27 @@ async def test_every_call_is_recorded_with_its_outcome(
         ("competition_scores", "error"),
     ]
     assert all(call.duration_ms >= 0 for call in recorded)
-    # No grant exists before `S4`, and the read tools take no credential — so
-    # False here is the right answer rather than a placeholder.
+    # The read tools take no credential, so False here is the right answer
+    # rather than a placeholder — see `tests/test_oauth_challenge.py` for the
+    # tools that do.
     assert all(call.authenticated is False for call in recorded)
 
 
 async def test_a_record_holds_no_arguments_and_no_result(
     mcp_url: str, mcp_server: FanmootMCP
 ) -> None:
+    """A take's *text* never reaches a record (``S7-4``); its tool's name does.
+
+    The tool here is deliberately not called ``post_moot``: from `S4-9` that name
+    is in ``TOOL_SCOPES`` and a call without a grant is answered with a 401 before
+    a record is ever made, which is a different property and is asserted in
+    ``tests/test_oauth_challenge.py``. What is asserted here is the one this test
+    is named for, on a tool the gate lets through.
+    """
+
     @mcp_server.tool()
-    async def post_moot(body: str) -> str:
-        """Post a take."""
+    async def shout(body: str) -> str:
+        """Say something about the game."""
         return f"posted: {body}"
 
     async with (
@@ -234,8 +244,9 @@ async def test_a_record_holds_no_arguments_and_no_result(
         ClientSession(read, write) as session,
     ):
         await session.initialize()
-        await session.call_tool("post_moot", {"body": "the referee was bought"})
+        await session.call_tool("shout", {"body": "the referee was bought"})
 
+    assert telemetry.recent(), "the call was not recorded at all"
     assert "bought" not in str(telemetry.recent())
 
 

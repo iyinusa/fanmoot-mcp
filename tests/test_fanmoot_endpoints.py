@@ -11,10 +11,13 @@ answer.
 
 from __future__ import annotations
 
+import json
 import uuid
 
 from app.fanmoot import endpoints
 from app.fanmoot.models import (
+    AuthResult,
+    AuthTokens,
     ClubNewsPage,
     ClubOut,
     ClubPage,
@@ -277,6 +280,99 @@ async def test_follow(replay: Replay) -> None:
 
 
 # ── The acceptance criterion itself ──────────────────────────────────────────
+# ── Authentication: the calls the OAuth server makes on a fan's behalf (S4) ──
+# Stubbed rather than recorded, and that is not a shortcut: `make record` runs
+# against the live API with a real account, and a recording of `/v1/auth/login`
+# would be a recording of somebody's credentials being accepted. The shapes below
+# are Fanmoot's own `AuthResponse` and `TokenResponse`, mirrored in
+# `app.fanmoot.models`, which is what these assertions are actually checking.
+def _auth_body(*, handle: str = "thegunner", verified: bool = True) -> dict[str, object]:
+    return {
+        "user": {
+            "id": "2f1c8d60-9b47-4a6e-9d1b-0c2f8e5a3b71",
+            "email": "fan@example.com",
+            "handle": handle,
+            "name": "A Fan",
+            "email_verified": verified,
+        },
+        "tokens": {
+            "access_token": "upstream-access-token",
+            "token_type": "Bearer",
+            "expires_in": 900,
+            "refresh_token": "upstream-refresh-token",
+        },
+    }
+
+
+async def test_login_asks_for_the_refresh_token_in_the_body(replay: Replay) -> None:
+    """`in_body=true` is the whole reason this wrapper exists: Fanmoot's default
+    is an httpOnly cookie, and there is no cookie jar here to put one in."""
+    replay.stub("/v1/auth/login", _auth_body(), method="POST", params={"in_body": "true"})
+
+    result = await endpoints.login(email="fan@example.com", password="correct horse")
+
+    assert isinstance(result, AuthResult)
+    assert result.user.handle == "thegunner"
+    assert result.tokens.refresh_token == "upstream-refresh-token"
+    assert replay.calls[0].url.params["in_body"] == "true"
+
+
+async def test_register_carries_the_fields_fanmoot_requires(replay: Replay) -> None:
+    """Date of birth is required upstream and the minimum age depends on the
+    country, which is why the sign-up form (`S4-11`) asks for both."""
+    replay.stub(
+        "/v1/auth/register",
+        _auth_body(handle="newfan", verified=False),
+        method="POST",
+        params={"in_body": "true"},
+    )
+
+    result = await endpoints.register(
+        email="new@example.com",
+        password="correct horse battery",
+        name="New Fan",
+        date_of_birth="1990-08-14",
+        country_code="GB-ENG",
+        handle="newfan",
+        club_slug="arsenal",
+    )
+
+    assert result.user.handle == "newfan"
+    assert result.user.email_verified is False
+    sent = json.loads(replay.calls[0].content)
+    assert sent["date_of_birth"] == "1990-08-14"
+    assert sent["country_code"] == "GB-ENG"
+    assert sent["club_slug"] == "arsenal"
+
+
+async def test_refresh_session_returns_the_rotated_pair(replay: Replay) -> None:
+    """Fanmoot rotates, so the successor has to come back and be stored — see
+    `app.oauth.upstream` on why a token spent and not recorded breaks the link."""
+    replay.stub(
+        "/v1/auth/refresh",
+        {
+            "access_token": "fresh-access",
+            "token_type": "Bearer",
+            "expires_in": 900,
+            "refresh_token": "rotated-refresh",
+        },
+        method="POST",
+        params={"in_body": "true"},
+    )
+
+    issued = await endpoints.refresh_session(refresh_token="upstream-refresh-token")
+
+    assert isinstance(issued, AuthTokens)
+    assert issued.access_token == "fresh-access"
+    assert issued.refresh_token == "rotated-refresh"
+
+
+async def test_logout_is_best_effort_and_returns_nothing(replay: Replay) -> None:
+    replay.stub("/v1/auth/logout", {"message": "Signed out."}, method="POST")
+
+    assert await endpoints.logout(refresh_token="upstream-refresh-token") is None
+
+
 async def test_no_wrapper_is_left_untested() -> None:
     """S1's acceptance says *every* endpoint wrapper. This fails the build when
     one is added without a test, rather than leaving the claim on trust."""
@@ -313,6 +409,10 @@ async def test_no_wrapper_is_left_untested() -> None:
         "open_predictions",
         "my_predictions",
         "follow",
+        "login",
+        "register",
+        "refresh_session",
+        "logout",
     }
 
     assert wrappers == tested, f"untested wrappers: {sorted(wrappers - tested)}"

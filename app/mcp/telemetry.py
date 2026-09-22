@@ -11,11 +11,12 @@ Records land in two places, for two different readers:
 * an in-process **ring buffer**, which is what ``make latency`` and the demo
   read without a round trip to Postgres in the middle of a voice turn.
 
-The buffer is deliberately not the durable copy. ``S4-1`` creates the
-``tool_calls`` table and ``record()`` grows a write-through to it; until then
-this server has no database migration at all, and a telemetry module that
-insisted on one would make the whole test suite need Postgres for the sake of
-a latency histogram.
+The buffer is deliberately not the durable copy. ``S4-1`` created the
+``tool_calls`` table and ``set_sink`` is the write-through to it — installed by
+the application lifespan, and by nothing else. That is what keeps this module
+free of a database dependency: a server writes both copies, and a test suite
+that installs no sink writes one, so the twelve read tools are still testable
+without Postgres.
 
 **No bodies, ever** (``S7-4``). A record holds the tool's *name*, a duration
 and a status. It never holds arguments or results: ``post_moot``'s argument is
@@ -25,7 +26,9 @@ in a log that an operator reads over someone's shoulder.
 
 from __future__ import annotations
 
+import uuid
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
@@ -43,6 +46,18 @@ RING_SIZE = 2048
 
 _ring: deque[ToolCall] = deque(maxlen=RING_SIZE)
 
+#: Where a recorded call goes *as well as* the ring. ``app.audit`` installs the
+#: durable one from the lifespan; there is none in a test, and none in a process
+#: that has not started up.
+Sink = Callable[["ToolCall"], None]
+_sink: Sink | None = None
+
+
+def set_sink(sink: Sink | None) -> None:
+    """Install (or drop) the write-through. The lifespan's hook, and a test's."""
+    global _sink
+    _sink = sink
+
 
 @dataclass(frozen=True, slots=True)
 class ToolCall:
@@ -58,6 +73,10 @@ class ToolCall:
     authenticated: bool
     request_id: str | None
     at: datetime
+    #: Which grant it ran under, when it ran under one. Read from the token the
+    #: `/mcp` mount verified (`S4-8`), so an authenticated call can be tied to a
+    #: link without the tool having to pass anything.
+    grant_id: uuid.UUID | None = None
 
 
 def record(
@@ -67,6 +86,7 @@ def record(
     status: Status,
     authenticated: bool,
     request_id: str | None = None,
+    grant_id: uuid.UUID | None = None,
 ) -> ToolCall:
     """Log and remember one call. Returns the record, for a caller that wants it."""
     call = ToolCall(
@@ -76,6 +96,7 @@ def record(
         authenticated=authenticated,
         request_id=request_id,
         at=datetime.now(UTC),
+        grant_id=grant_id,
     )
     _ring.append(call)
 
@@ -90,6 +111,15 @@ def record(
         status=call.status,
         authenticated=call.authenticated,
     )
+
+    if _sink is not None:
+        try:
+            _sink(call)
+        except Exception as exc:
+            # A telemetry failure never fails a tool call. The ring already has
+            # the record and the log line above is already written.
+            log.warning("tool_call_sink_failed", error_type=type(exc).__name__, error=str(exc))
+
     return call
 
 
@@ -107,12 +137,29 @@ def reset() -> None:
 def authenticated_now() -> bool:
     """Whether the call in flight carries a fan's grant.
 
-    Reads the SDK's auth context, which is populated by the bearer-token
-    middleware ``S4`` installs on the ``/mcp`` mount. Until then there is no
-    middleware and this is always False — which is correct rather than
-    provisional: before ``S4`` no call *is* authenticated, because the read
-    tools take no credential at all.
+    Reads the SDK's auth context, populated by the bearer-token middleware
+    ``S4`` installs on the ``/mcp`` mount (``app.oauth.bearer``). False for every
+    read tool, which take no credential at all.
     """
     from mcp.server.auth.middleware.auth_context import get_access_token
 
     return get_access_token() is not None
+
+
+def grant_now() -> uuid.UUID | None:
+    """The grant the call in flight is running under, if any.
+
+    Carried in the verified token's ``claims`` rather than passed down through
+    the tool signature, because the twelve read tools have no business holding a
+    grant id and the alternative is threading one through all of them.
+    """
+    from mcp.server.auth.middleware.auth_context import get_access_token
+
+    token = get_access_token()
+    raw = (token.claims or {}).get("grant_id") if token is not None else None
+    if not raw:
+        return None
+    try:
+        return uuid.UUID(str(raw))
+    except ValueError:  # pragma: no cover - the verifier writes it
+        return None

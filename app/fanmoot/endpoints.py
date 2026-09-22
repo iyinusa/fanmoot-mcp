@@ -28,6 +28,8 @@ from pydantic import BaseModel, TypeAdapter
 from app.fanmoot import cache as cache_module
 from app.fanmoot.client import FanmootClient, get_client
 from app.fanmoot.models import (
+    AuthResult,
+    AuthTokens,
     ClubNewsPage,
     ClubOut,
     ClubPage,
@@ -482,6 +484,100 @@ async def club_news(
         token=token,
         client=client,
     )
+
+
+# ── Authentication: the calls the OAuth server makes on a fan's behalf (S4) ──
+# This server is not an identity provider. It authenticates a fan by asking
+# Fanmoot, with the fan's own credentials, on a page the fan is looking at
+# (HAD-4) — and then holds the refresh token that comes back, encrypted, so a
+# voice turn months later can mint a short-lived access token without asking
+# again (HAD-3).
+#
+# `in_body=true` on all three. Fanmoot's default is an httpOnly cookie, which is
+# right for a browser and useless to a server: there is no cookie jar here, and
+# the token has to be readable to be encrypted.
+_IN_BODY = {"in_body": "true"}
+
+
+async def login(*, email: str, password: str, client: FanmootClient | None = None) -> AuthResult:
+    """``POST /v1/auth/login`` — the consent screen's sign-in (`S4-10`).
+
+    Never cached, never retried, and the caller never sees the password again:
+    it arrives on one form POST, goes straight out in this request, and is not
+    written anywhere in this service. A 401 comes back as
+    ``FanmootUnauthorized`` carrying Fanmoot's own sentence, which is the one
+    worth showing a fan — "Email or password is incorrect", not "authentication
+    failed".
+    """
+    reply = await (client or get_client()).post(
+        "/v1/auth/login", json={"email": email, "password": password}, params=_IN_BODY
+    )
+    return AuthResult.model_validate(reply.data)
+
+
+async def register(
+    *,
+    email: str,
+    password: str,
+    name: str,
+    date_of_birth: str,
+    country_code: str | None = None,
+    handle: str | None = None,
+    club_slug: str | None = None,
+    client: FanmootClient | None = None,
+) -> AuthResult:
+    """``POST /v1/auth/register`` — a brand new fan, created inside the flow (`S4-11`).
+
+    This is the creator's explicit requirement: someone who has never heard of
+    Fanmoot should be able to say "Alexa, post to Fanmoot" and come out the other
+    side with a live account, without leaving the linking flow.
+
+    ``date_of_birth`` is required upstream and the minimum age depends on the
+    country, which is why the sign-up form asks for both. Fanmoot answers a
+    known address with a 409 and emails the real owner a sign-in link rather than
+    confirming the account exists; that refusal is passed through as
+    ``FanmootRejected`` with Fanmoot's own wording, and the form shows it.
+    """
+    payload: dict[str, Any] = {
+        "email": email,
+        "password": password,
+        "name": name,
+        "date_of_birth": date_of_birth,
+    }
+    if country_code:
+        payload["country_code"] = country_code
+    if handle:
+        payload["handle"] = handle
+    if club_slug:
+        payload["club_slug"] = club_slug
+
+    reply = await (client or get_client()).post("/v1/auth/register", json=payload, params=_IN_BODY)
+    return AuthResult.model_validate(reply.data)
+
+
+async def refresh_session(*, refresh_token: str, client: FanmootClient | None = None) -> AuthTokens:
+    """``POST /v1/auth/refresh`` — the other half of the token exchange (`S4-8`).
+
+    Fanmoot rotates: this returns a **new** refresh token as well as an access
+    token, and the old one is spent. The caller must store what comes back or
+    the link is broken on the next turn — and presenting a spent token there
+    revokes the whole family upstream, which is Fanmoot's own theft defence and
+    not something to trip over twice.
+    """
+    reply = await (client or get_client()).post(
+        "/v1/auth/refresh", json={"refresh_token": refresh_token}, params=_IN_BODY
+    )
+    return AuthTokens.model_validate(reply.data)
+
+
+async def logout(*, refresh_token: str, client: FanmootClient | None = None) -> None:
+    """``POST /v1/auth/logout`` — end the upstream session.
+
+    Called when a fan disconnects a client (`S4-13`). Best-effort by nature:
+    this server's own grant is revoked whatever happens here, and upstream
+    answers 200 whether or not the token was still valid.
+    """
+    await (client or get_client()).post("/v1/auth/logout", json={"refresh_token": refresh_token})
 
 
 # ── The signed-in fan (S5's tools call these) ────────────────────────────────

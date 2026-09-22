@@ -1,0 +1,98 @@
+[project]
+name = "fanmoot-mcp"
+version = "0.1.0"
+description = "Fanmoot MCP server — football conversation as tools, resources and prompts, with its own OAuth 2.1 authorization server."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+
+dependencies = [
+    # ── Web ──────────────────────────────────────────────────────────────────
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "gunicorn>=22.0",
+    "python-multipart>=0.0.9",
+    "jinja2>=3.1",            # the consent, login and sign-up pages (HAD-4)
+
+    # ── MCP ──────────────────────────────────────────────────────────────────
+    # Pinned to the **handshake era** on purpose (HAD-2). 1.30.0 ships
+    # LATEST_PROTOCOL_VERSION = "2025-11-25", which is what Alexa+ implements.
+    # The 2.x line is the "modern era" (`server/discover`, `2026-07-28`); it
+    # released the same day as 1.29.0 and the 1.x line is still maintained
+    # alongside it. Serving only 2.x would fail the track, so the floor is a
+    # 1.x release and `<2` is the part that matters.
+    "mcp>=1.30,<2",
+
+    # ── Config & validation ──────────────────────────────────────────────────
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "email-validator>=2.1",
+
+    # ── Database (OAuth state only — HAD-1, HAD-3) ───────────────────────────
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+
+    # ── Auth & secrets ───────────────────────────────────────────────────────
+    "passlib[argon2]>=1.7.4",
+    "pyjwt>=2.8",
+    "cryptography>=42.0",     # Fernet envelope for upstream_sessions (HAD-3)
+
+    # ── Infrastructure ───────────────────────────────────────────────────────
+    "httpx>=0.27",
+    "structlog>=24.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-passlib",
+    "respx>=0.21",          # records and replays the upstream /v1 calls (HAD-14)
+    "asgi-lifespan>=2.1",   # runs startup/shutdown hooks in tests
+    "python-dotenv>=1.0",   # conftest reads .env before importing app
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+# ── Lint ─────────────────────────────────────────────────────────────────────
+# Same rule set as `fanmoot`, so a reviewer moving between the two repos reads
+# one style rather than two (HAD-2).
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC", "C4", "SIM"]
+ignore = [
+    "B008",  # FastAPI declares dependencies in default args by design
+]
+
+[tool.ruff.lint.per-file-ignores]
+# asserts and fake credentials in tests; ASYNC240 guards request handlers from
+# stalling the event loop, which a test reading a file from disk does not.
+"tests/*" = ["S101", "S105", "S106", "ASYNC240"]
+"tests/conftest.py" = ["E402"]                # env must be set before app imports
+"alembic/*" = ["E501"]
+"alembic/env.py" = ["E402"]
+
+# ── Types ────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+# Migrations are generated code with a fixed alembic-authored shape.
+exclude = ["^alembic/versions/"]
+
+# ── Tests ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -1,0 +1,95 @@
+# Production stack for Dokploy.
+#
+# Two things about this file are load-bearing and easy to undo by accident:
+#
+#  1. There is NO `ports:` mapping. Dokploy's Traefik reverse proxy routes to
+#     this container over the shared `dokploy-network` on its internal port.
+#     Publishing 8080:8080 binds the host port and bypasses (or collides with)
+#     Traefik — the classic "works locally, 502 in production" cause. It would
+#     also collide with `fanmoot`, which sits on the same host.
+#
+#  2. Every FMCP_* variable is injected explicitly under `environment:`.
+#     Dokploy passes configuration as environment variables through its UI, not
+#     as a committed .env file, and `env_file:` alone would leave the container
+#     with nothing when that file is absent. The `${VAR:-default}` form means a
+#     variable the operator has not set falls back to a safe default rather
+#     than an empty string.
+#
+# There is deliberately no `db:` service. This server targets a *remote*
+# managed PostgreSQL with its own backups, and it is a small one: seven OAuth
+# tables and nothing else (HAD-3). Fanmoot's own data is reached over its
+# public API (HAD-1), so there is no second database to link here.
+
+services:
+  mcp:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # ── Environment & identity ──────────────────────────────────────────
+      FMCP_ENV: ${FMCP_ENV:-production}
+      FMCP_PUBLIC_BASE_URL: ${FMCP_PUBLIC_BASE_URL:-https://mcp.fanmoot.com}
+
+      # ── Upstream Fanmoot (HAD-1) ────────────────────────────────────────
+      FMCP_FANMOOT_API_BASE_URL: ${FMCP_FANMOOT_API_BASE_URL:-https://fanmoot.com}
+      FMCP_FANMOOT_TIMEOUT_S: ${FMCP_FANMOOT_TIMEOUT_S:-8.0}
+
+      # ── This server's own database (OAuth state only) ───────────────────
+      FMCP_DATABASE_URL: ${FMCP_DATABASE_URL:-}
+      FMCP_DB_POOL_SIZE: ${FMCP_DB_POOL_SIZE:-5}
+      FMCP_DB_MAX_OVERFLOW: ${FMCP_DB_MAX_OVERFLOW:-10}
+
+      # ── Secrets ─────────────────────────────────────────────────────────
+      # Unset, the authenticated tools are simply off: a grant cannot be
+      # encrypted at rest, so it is refused rather than stored in plaintext.
+      FMCP_SECRET_ENCRYPTION_KEY: ${FMCP_SECRET_ENCRYPTION_KEY:-}
+
+    expose:
+      - "8080"
+
+    # Migrations run before the server accepts traffic, in one place, so a
+    # deploy can never serve requests against a schema it does not match.
+    # `--preload` is deliberately absent: gunicorn would import the app before
+    # forking, and the asyncpg pool must be created per worker.
+    #
+    # One worker — see the Dockerfile's CMD for why an MCP session cannot cross
+    # a process boundary yet.
+    command: >
+      sh -c '
+      alembic upgrade head &&
+      exec gunicorn app.main:app
+      -k uvicorn.workers.UvicornWorker
+      -b 0.0.0.0:8080
+      --workers 1
+      --timeout 90
+      --graceful-timeout 30
+      --access-logfile -
+      '
+
+    # Lets the container reach a database or tunnel on the Docker host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - dokploy-network
+
+networks:
+  # Created by Dokploy on its host. Locally, create it once by hand:
+  #   docker network create dokploy-network
+  dokploy-network:
+    external: true

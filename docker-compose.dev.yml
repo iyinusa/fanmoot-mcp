@@ -1,0 +1,50 @@
+# Local development overlay. Never used in production.
+#
+#   docker network create dokploy-network   # one-time, see note below
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Deliberately NOT named `docker-compose.override.yml`, because Compose loads
+# that filename automatically — including on the Dokploy host, where it would
+# publish port 8080 in production and collide with Traefik.
+#
+# The base file joins the external `dokploy-network`. A Compose overlay can add
+# configuration but not remove it, so rather than trying to strip that, create
+# a local network of the same name once and the base file resolves cleanly:
+#
+#   docker network create dokploy-network
+
+services:
+  mcp:
+    # Safe locally: `fanmoot` takes 8000, this takes 8080.
+    ports:
+      - "8080:8080"
+
+    volumes:
+      # Live-reload sources so edits land without a rebuild.
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./tests:/app/tests
+
+    environment:
+      FMCP_ENV: development
+      FMCP_PUBLIC_BASE_URL: ${FMCP_PUBLIC_BASE_URL:-http://localhost:8080}
+      FMCP_DB_ECHO: ${FMCP_DB_ECHO:-false}
+      # A database on the Docker host is reached as `host.docker.internal` from
+      # inside a container and as `127.0.0.1` from the host shell — one value
+      # cannot serve both, and host-run tooling (pytest, alembic, uvicorn) is
+      # the common path in development. So FMCP_DATABASE_URL stays host-facing
+      # and FMCP_DOCKER_DATABASE_URL overrides it for the container only.
+      # Point it at a managed remote database and neither is needed: set
+      # FMCP_DATABASE_URL alone and leave FMCP_DOCKER_DATABASE_URL empty.
+      FMCP_DATABASE_URL: ${FMCP_DOCKER_DATABASE_URL:-${FMCP_DATABASE_URL}}
+      # A Fanmoot running on the host rather than production. Same reasoning:
+      # from inside the container it is host.docker.internal, never localhost.
+      FMCP_FANMOOT_API_BASE_URL: ${FMCP_FANMOOT_API_BASE_URL:-https://fanmoot.com}
+
+    # One uvicorn worker with --reload instead of gunicorn. `exec` so signals
+    # reach uvicorn and Ctrl-C stops it promptly.
+    command: >
+      sh -c '
+      alembic upgrade head &&
+      exec uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+      '

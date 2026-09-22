@@ -1,0 +1,55 @@
+# The same three commands `make check` runs locally, in the same order, so a
+# green laptop means a green pipeline and a red pipeline is reproducible with
+# one command.
+#
+# No database service. This suite is offline by construction: the server is a
+# client of Fanmoot's API rather than of its database (HAD-1), the tests replay
+# recorded `/v1` responses (HAD-14), and its own OAuth store is substituted
+# rather than stood up. If a `postgres:` service ever appears here, something
+# has started reaching for real rows and should be looked at.
+
+name: check
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  # A new push supersedes the run in flight for the same ref; a queue of stale
+  # runs helps nobody during a hackathon.
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+
+      - name: Lint
+        run: |
+          .venv/bin/ruff check .
+          .venv/bin/ruff format --check .
+
+      - name: Types
+        run: .venv/bin/mypy app
+
+      # The suite sets its own FMCP_* variables before importing the app (see
+      # tests/conftest.py), so there is nothing to configure here.
+      - name: Tests
+        run: .venv/bin/pytest -q

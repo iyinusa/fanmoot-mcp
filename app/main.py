@@ -20,6 +20,7 @@ manager therefore lives on ``app.state`` and the lifespan reads it from there.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -27,7 +28,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app import __version__, audit, health
+from app import __version__, audit, health, legal, mood, registry, warm
 from app.db import dispose_engine, get_sessionmaker
 from app.fanmoot import cache as fanmoot_cache
 from app.fanmoot import names as fanmoot_names
@@ -35,9 +36,10 @@ from app.fanmoot.client import close_client, get_client
 from app.logging_config import configure_logging, get_logger
 from app.mcp import transport
 from app.mcp.server import get_server
-from app.middleware import RequestIdMiddleware
+from app.middleware import RequestIdMiddleware, SecurityHeadersMiddleware
 from app.oauth import clients as oauth_clients
 from app.oauth import dcr as oauth_dcr
+from app.oauth import flow as oauth_flow
 from app.oauth import metadata as oauth_metadata
 from app.oauth import router as oauth_router
 from app.oauth import upstream as oauth_upstream
@@ -69,6 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # (`S4-8`), so a restarted worker starts from the encrypted refresh tokens
     # rather than from whatever a previous process held.
     oauth_upstream.reset_cache()
+    mood.reset_readings()
 
     # Alexa's credentials, upserted by client_id (`S4-5`). Best-effort on
     # purpose: a database that is down at boot must not take the read surface —
@@ -76,6 +79,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # an unreachable database, and the log line below is what an operator greps
     # when account linking is failing.
     await _seed_oauth_clients()
+    housekeeping = asyncio.create_task(_housekeeping()) if settings.can_store_grants else None
 
     # Every tool call is written through to `tool_calls` from here on (`S4-1`).
     # Installed in the lifespan and nowhere else, which is what keeps the test
@@ -94,11 +98,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         grant_storage=settings.can_store_grants,
     )
 
+    # Warmed in the background (`S7-2`): the server takes traffic at once, and
+    # a fanmoot.com that is slow to answer at boot delays nothing but itself.
+    warming = asyncio.create_task(warm.keep_warm()) if settings.warm_caches else None
+
     # The MCP transport's task group wraps the yield: every session is a task
     # inside it, so it opens before the first request can arrive and closes
     # after the last one has been answered.
     async with transport.running(app.state.mcp_session_manager):
         yield
+
+    for background in (warming, housekeeping):
+        if background is not None:
+            background.cancel()
 
     # Telemetry inserts are scheduled rather than awaited (`app.audit`), so the
     # last few are still in flight here. Dropped rather than waited on for long:
@@ -128,12 +140,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
     )
 
+    # Inside the request id, so a 500 the id middleware logs still went out
+    # with its headers (`S7-5`).
+    app.add_middleware(
+        SecurityHeadersMiddleware, https=settings.public_base_url.startswith("https://")
+    )
+
     # Outermost, so every request that is handled gets an id and a log line —
     # including every JSON-RPC frame on the /mcp route, which is what makes the
     # demo's trace panel line up with this server's logs (HAD-12).
     app.add_middleware(RequestIdMiddleware)
 
     app.include_router(health.router)
+    app.include_router(legal.router)
+    app.include_router(registry.router)
 
     # The OAuth 2.1 authorization server (`S4`, HAD-4). Three routers because
     # they answer to three different specifications: the discovery documents
@@ -157,12 +177,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 async def _seed_oauth_clients() -> None:
-    """Upsert the static clients, and reap self-registered ones that lapsed.
+    """Upsert the static clients before the first request can need them.
 
-    Both in one place because both are boot-time housekeeping on one table, and
-    both are wrapped in the same refusal to bring the process down: the failure
-    mode of a missing static client is "Alexa cannot link", which is bad, and the
-    failure mode of raising here is "nothing works at all", which is worse.
+    Wrapped in a refusal to bring the process down: the failure mode of a
+    missing static client is "Alexa cannot link", which is bad, and the failure
+    mode of raising here is "nothing works at all", which is worse. Reaping
+    lapsed registrations moved to ``_housekeeping``, which runs daily rather
+    than only at a deploy.
     """
     log = get_logger("startup")
 
@@ -178,7 +199,6 @@ async def _seed_oauth_clients() -> None:
     try:
         async with get_sessionmaker()() as session:
             await oauth_clients.seed_static(session)
-            await oauth_clients.reap_stale(session)
     except Exception as exc:
         log.error(
             "oauth_client_seeding_failed",
@@ -189,3 +209,30 @@ async def _seed_oauth_clients() -> None:
 
 
 app = create_app()
+
+
+#: Once a day is plenty: the shortest retention is measured in days.
+_HOUSEKEEPING_INTERVAL_S = 24 * 3600
+
+
+async def _housekeeping() -> None:
+    """Reap lapsed registrations and prune the logs, now and then daily.
+
+    Both run in the background so a slow database never delays startup, and a
+    failure is logged and retried tomorrow rather than raised. What `/privacy`
+    promises about retention (`S7-12`) is kept here.
+    """
+    log = get_logger("housekeeping")
+    while True:
+        try:
+            async with get_sessionmaker()() as session:
+                await oauth_clients.reap_stale(session)
+                await audit.prune(session)
+                # Five minutes past the browser session, so nobody half way
+                # through linking a second app loses the sign-in under them.
+                await oauth_upstream.end_unused_sessions(
+                    session, grace_s=oauth_flow.SESSION_TTL_S + 300
+                )
+        except Exception as exc:
+            log.warning("housekeeping_failed", error_type=type(exc).__name__, error=str(exc))
+        await asyncio.sleep(_HOUSEKEEPING_INTERVAL_S)

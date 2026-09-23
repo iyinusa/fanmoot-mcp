@@ -7,12 +7,36 @@ sign in *or sign up* from the client and then post in their own name.
 
 Spec era **`2025-11-25`**, Streamable HTTP, on `POST|GET /mcp`.
 
-> **In progress.** This README fills out as the milestones land. Through `S6`
-> the server answers football questions to anyone who connects, a fan can link
-> their Fanmoot account to any client, a linked fan can post, reply, react,
-> predict and follow by tool call, and a host that supports MCP Apps renders
-> four interactive views. See `../Amazon Hackathon.md` §6 for the milestone
-> list.
+**Live at `https://mcp.fanmoot.com/mcp`.** No account is needed to ask about
+football. A fan who wants to post connects their Fanmoot account from inside
+the client.
+
+- [Connect a client](#connect-a-client) — Claude, ChatGPT, Cursor, VS Code, the
+  Inspector, `curl`, and Alexa+
+- [How it is built](#how-it-is-built) — architecture and the OAuth flow
+- [Compliance](#compliance) — each requirement, where it is met and which test
+  proves it
+- [Operating it](docs/runbook.md) — deploy, roll back, rotate keys, the latency
+  budget
+
+## Sixty seconds
+
+```bash
+claude mcp add --transport http fanmoot https://mcp.fanmoot.com/mcp
+```
+
+Then ask *"what's on in the Premier League this weekend?"* or *"what are fans
+saying about the Arsenal game?"*. Ask it to *"post that the second goal was
+offside"* and your client opens a Fanmoot sign-in page. Sign in or create an
+account, tick what it may do, and the take goes out under your handle.
+
+Running it yourself:
+
+```bash
+make install && cp .env.example .env    # set FMCP_DATABASE_URL and FMCP_SECRET_ENCRYPTION_KEY
+make migrate && make dev                # http://localhost:8080/mcp
+make inspect                            # MCP Inspector, already pointed at it
+```
 
 ## What it talks to
 
@@ -231,20 +255,114 @@ does revoke a family — and still leaves `make check` with nothing to install.
 
 ## Connect a client
 
-The endpoint is `https://mcp.fanmoot.com/mcp` — one path, three methods:
-`POST` sends a JSON-RPC frame and gets an SSE stream back, `GET` opens the
-stream the server pushes notifications down, `DELETE` ends the session. There
-is no trailing slash and no redirect.
+One URL for every client: **`https://mcp.fanmoot.com/mcp`**, Streamable HTTP.
+None of them needs a key or a client id. Each one registers itself (RFC 7591,
+or a client ID metadata document) the first time it meets a tool that needs a
+fan, then sends the fan through sign-in.
 
-Locally, with `make dev` running in another shell:
+### Claude Code
 
 ```bash
-make inspect          # MCP Inspector against http://127.0.0.1:8080/mcp
-make inspect MCP_URL=https://mcp.fanmoot.com/mcp
+claude mcp add --transport http fanmoot https://mcp.fanmoot.com/mcp
 ```
 
-Full client-by-client configuration — Claude, ChatGPT, Cursor, Alexa+ — lands
-with `S7-6`.
+### Claude (desktop and web)
+
+**Settings → Connectors → Add custom connector**, and paste the URL. For a
+Claude Desktop that only runs local servers, bridge it with `mcp-remote` in
+`claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "fanmoot": { "command": "npx", "args": ["-y", "mcp-remote", "https://mcp.fanmoot.com/mcp"] }
+  }
+}
+```
+
+### ChatGPT
+
+With developer mode on (**Settings → Apps & Connectors → Advanced**), create a
+connector with the URL above and OAuth authentication. ChatGPT registers itself
+and discovers the authorization server from the 401 challenge.
+
+### Cursor
+
+`~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project:
+
+```json
+{ "mcpServers": { "fanmoot": { "url": "https://mcp.fanmoot.com/mcp" } } }
+```
+
+### VS Code
+
+`.vscode/mcp.json`:
+
+```json
+{ "servers": { "fanmoot": { "type": "http", "url": "https://mcp.fanmoot.com/mcp" } } }
+```
+
+### MCP Inspector
+
+```bash
+make inspect MCP_URL=https://mcp.fanmoot.com/mcp
+# or: npx @modelcontextprotocol/inspector --transport http --server-url https://mcp.fanmoot.com/mcp
+```
+
+### Any stdio-only client
+
+`mcp-remote` turns the remote server into a local stdio one, OAuth included:
+
+```bash
+npx -y mcp-remote https://mcp.fanmoot.com/mcp
+```
+
+### Plain HTTP
+
+No SDK is needed. The handshake, then a tool call on the session it opened:
+
+```bash
+URL=https://mcp.fanmoot.com/mcp
+H=(-H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream')
+
+SESSION=$(curl -si "${H[@]}" $URL -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
+  "params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}' \
+  | awk -F': ' 'tolower($1)=="mcp-session-id"{print $2}' | tr -d '\r')
+H+=(-H "Mcp-Session-Id: $SESSION" -H 'Mcp-Protocol-Version: 2025-11-25')
+
+curl -s "${H[@]}" $URL -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+curl -s "${H[@]}" $URL -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
+  "params":{"name":"live_scores","arguments":{}}}'
+```
+
+`make smoke` runs this conversation from Python, adds the discovery documents
+and the 401 challenge, and checks every answer.
+
+### Alexa+
+
+The server implements Alexa's account-linking contract: a pre-seeded static
+client (`FMCP_OAUTH_CLIENTS`), exact redirect-URI matching, PKCE S256,
+`resource` on authorize and token, and refresh tokens always. It has **never
+been connected to Alexa.** The Alexa+ MCP Toolkit is in preview with selected
+partners, and Amazon confirmed it is not available to hackathon participants. The web demo at `amazonplus.fanmoot.com` drives this
+server through a simulated Alexa+ surface instead.
+
+### Client compatibility
+
+What each client does at registration, from connecting it to the deployed
+server (`S7-10`). **Nothing in this table has been verified yet.** It is filled
+in from real runs against `mcp.fanmoot.com`, and a failure here counts as a bug
+in the server.
+
+| Client | Registers via | Discovery path it reads | Signs in | Calls a write tool | Verified |
+|---|---|---|---|---|---|
+| Claude Code | | | | | not yet |
+| Claude (custom connector) | | | | | not yet |
+| Claude Desktop + `mcp-remote` | | | | | not yet |
+| ChatGPT (developer mode) | | | | | not yet |
+| Cursor | | | | | not yet |
+| MCP Inspector | | | | | not yet |
+| `curl` / `make smoke` | — (read tools and 401 only) | PRM, AS, OIDC | — | 401 as expected | not yet |
 
 ### What the transport does
 
@@ -263,6 +381,133 @@ with `S7-6`.
 - **Errors that teach**: a bad argument comes back as a tool execution error
   carrying a sentence a model can read aloud — "I still need club for that." —
   not a protocol error that ends the turn.
+
+## How it is built
+
+```mermaid
+flowchart LR
+    subgraph clients[Any MCP client]
+      A[Alexa+]:::c
+      C[Claude / ChatGPT / Cursor]:::c
+      D[amazonplus.fanmoot.com demo]:::c
+    end
+    subgraph mcp[mcp.fanmoot.com — one process]
+      T["/mcp — Streamable HTTP<br/>2025-11-25"]
+      G[bearer gate<br/>401 / 403 + RFC 9728]
+      AS["OAuth 2.1 AS<br/>/authorize /token /oauth/register"]
+      TL[19 tools · 4 ui:// views]
+      K[read-through cache<br/>+ warm-up loop]
+      M[match_mood]
+    end
+    PG[(Postgres<br/>OAuth state only)]
+    F[fanmoot.com/v1<br/>public API]
+    B[Amazon Bedrock<br/>Nova Lite]
+    clients --> T --> G --> TL
+    clients -.sign in.-> AS
+    AS --> PG
+    G --> PG
+    TL --> K --> F
+    AS -- login / register / refresh --> F
+    TL --> M --> B
+    classDef c fill:#0444c8,color:#fff,stroke:none
+```
+
+- **A client of Fanmoot's public API, not of its database.** Everything this
+  server can do, a fan could do with `curl` against `fanmoot.com`.
+- **Its own authorization server.** What a client holds is an opaque handle to
+  a grant row. The server exchanges it for a 15-minute Fanmoot token per call,
+  so a leaked client token is revocable, expires within an hour and is useless
+  against fanmoot.com.
+- **A cache that is a requirement.** Every read goes through a per-endpoint
+  TTL cache with ETag revalidation. A loop keeps the live digest, the
+  fortnight's fixtures, the catalogue and live matches' moods warm, so the
+  first question after a quiet spell is not the slow one.
+
+### The OAuth flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as MCP client
+    participant S as mcp.fanmoot.com
+    participant Fan as Fan's browser
+    participant F as fanmoot.com
+    C->>S: tools/call post_moot (no token)
+    S-->>C: 401 WWW-Authenticate: resource_metadata=…/oauth-protected-resource/mcp
+    C->>S: GET PRM, then AS metadata
+    C->>S: POST /oauth/register (RFC 7591)
+    S-->>C: client_id
+    C->>Fan: open /authorize?…&code_challenge=S256&resource=…/mcp
+    Fan->>S: sign in (or sign up)
+    S->>F: POST /v1/auth/login
+    F-->>S: Fanmoot refresh token → encrypted at rest
+    Fan->>S: consent: tick scopes
+    S-->>Fan: 302 redirect_uri?code&state&iss
+    Fan->>C: code
+    C->>S: POST /token (code + code_verifier)
+    S-->>C: opaque access token (1 h) + refresh token (90 d)
+    C->>S: tools/call post_moot + Bearer
+    S->>F: refresh → 15-min Fanmoot token → POST /v1/moots
+    S-->>C: "Posted as @you" (or "held for review", in Fanmoot's words)
+```
+
+## Compliance
+
+The Alexa+ track's requirements and the MCP `2025-11-25` MUSTs, each with the
+code that meets it and the test that proves it.
+
+| Requirement | Met by | Proved by |
+|---|---|---|
+| MCP `2025-11-25`, negotiated exactly | SDK pinned `<2` (`pyproject.toml`) | `tests/test_mcp_transport.py`, `make smoke` |
+| Streamable HTTP, one endpoint | `POST\|GET\|DELETE /mcp` (`app/mcp/transport.py`) | `tests/test_mcp_transport.py` |
+| Resumable streams (`Last-Event-ID`) | `app/mcp/events.py` | `tests/test_mcp_events.py` |
+| `Origin` validated, 403 on mismatch | `app/mcp/security.py` | `tests/test_mcp_origin.py`, `make smoke` |
+| Input errors as tool errors, not protocol errors | `app/mcp/errors.py` | `tests/test_mcp_errors.py` |
+| Tool icons, output schemas, `structuredContent` | `app/mcp/tools/` | `tests/test_tools_surface.py` |
+| OAuth 2.1 code + PKCE **S256 only**, `plain` refused | `app/oauth/router.py`, `pkce.py` | `tests/test_oauth_flow.py` |
+| RFC 9728 protected-resource metadata, bare and path-inserted | `app/oauth/metadata.py` | `tests/test_oauth_metadata.py` |
+| RFC 8414 AS metadata with `code_challenge_methods_supported: ["S256"]` | `app/oauth/metadata.py` | `tests/test_oauth_metadata.py` |
+| OIDC discovery path served | same document | `tests/test_oauth_metadata.py` |
+| Resource indicators on authorize and token, not refresh | `app/oauth/router.py` | `tests/test_oauth_token.py` |
+| Exact redirect-URI match, several per client, never defaulted | `app/oauth/clients.py` | `tests/test_oauth_flow.py` |
+| Refresh tokens always; rotation with reuse detection | `app/oauth/grants.py` | `tests/test_oauth_token.py` |
+| 401 / 403 with `WWW-Authenticate` from authenticated tools | `app/oauth/bearer.py` | `tests/test_oauth_challenge.py` |
+| Incremental scope consent (SEP-835) | `app/oauth/bearer.py` | `tests/test_oauth_challenge.py` |
+| Dynamic Client Registration (RFC 7591/7592) | `app/oauth/dcr.py` | `tests/test_oauth_dcr.py` |
+| Client ID metadata documents (SEP-991), SSRF-fenced | `app/oauth/dcr.py` | `tests/test_oauth_client_metadata.py` |
+| MCP Apps `ui://` views (`2026-01-26`) | `app/mcp/apps/` | `tests/test_apps_views.py`, `tests/test_apps_render.py` |
+| < 500 ms (400 ms p95 budget per tool) | cache + warm-up + cached mood | `tests/test_latency.py`, `make latency` |
+| Public HTTPS URL, HSTS | Dokploy + Traefik, `app/middleware.py` | `tests/test_security_headers.py`, `make smoke` |
+| AWS service actually called | `match_mood` → Bedrock Converse (`app/mood.py`) | `tests/test_tools_mood.py` |
+
+## Hardening
+
+- **Latency.** `make latency` prints p50/p95 per tool from the `tool_calls`
+  table, or drives a read workload at any URL with `--drive`. It exits 1 when a
+  tool's p95 is over 400 ms. On 23 September 2026, a local server fetching live
+  from fanmoot.com measured every tool's warm p95 under 70 ms, client-side.
+- **Prompt injection.** A take reaches a model only as a quote after its
+  poster's name, `Jo says: “…”`, with double quotes inside it made single so it
+  cannot close itself. Bidi overrides, zero-width and control characters are
+  stripped. The `match_mood` prompt's fence cannot be closed from inside a take.
+  See `app/untrusted.py`.
+- **Secrets.** The fan's Fanmoot session token is encrypted with a
+  `MultiFernet` that takes a list of keys, so the key rotates without signing
+  anyone out (`make rotate-keys`). Every other credential is stored as a
+  SHA-256 hash. A structlog processor strikes credentials out of every log
+  line. A revoked session's ciphertext is deleted. `tool_calls` has no column
+  a body could go in.
+- **Headers.** nosniff and `no-referrer` everywhere, HSTS from an `https`
+  origin, and a script-free CSP with `frame-ancestors 'none'` on every HTML page.
+- **Drift.** `make verify-live` replays the recordings against production, and
+  runs on demand from a laptop, so it costs no CI minutes.
+
+## Privacy
+
+What the server keeps, and for how long, is at
+[`/privacy`](https://mcp.fanmoot.com/privacy). The figures on that page are
+rendered from the constants that enforce them. Terms are at
+[`/terms`](https://mcp.fanmoot.com/terms).
 
 ## Licence
 

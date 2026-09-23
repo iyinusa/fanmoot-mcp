@@ -1,6 +1,7 @@
 """ASGI middleware.
 
-One so far: request correlation. There is no canonical-host redirect here —
+Two: request correlation, and the security headers every response carries
+(`S7-5`). There is no canonical-host redirect here —
 ``mcp.fanmoot.com`` is an API origin with a single host, and an MCP client that
 followed a 301 mid-session would be a bug we caused. Origin *validation* for
 the ``/mcp`` mount is a different thing and lands with ``S2-3``; it returns 403
@@ -106,3 +107,81 @@ class RequestIdMiddleware:
 
 def _since(started: float) -> float:
     return round((time.perf_counter() - started) * 1000, 2)
+
+
+# ── Security headers (S7-5) ──────────────────────────────────────────────────
+#: On every response. `nosniff` because `/static` serves SVG, which a browser
+#: that guessed would happily run as a document; `no-referrer` because an OAuth
+#: URL is full of things a referrer should not carry to a client's website.
+_ALWAYS = (
+    (b"x-content-type-options", b"nosniff"),
+    (b"referrer-policy", b"no-referrer"),
+)
+
+#: On HTML only — the sign-in, sign-up, consent, connected-apps and legal pages.
+#: Every one of them is script-free and draws only its own stylesheet and icon,
+#: so the policy can say exactly that. `frame-ancestors 'none'` is the one that
+#: matters most: a consent screen somebody else can frame is a consent screen
+#: somebody else can trick a fan into clicking.
+#:
+#: There is deliberately **no `form-action`**. Chrome applies it to the redirect
+#: that *follows* a form post, and the consent form's whole job is to redirect to
+#: a client's callback — Alexa's, or a loopback port on the fan's own machine. A
+#: `form-action 'self'` would break every account link in the one browser most
+#: fans use.
+_HTML_CSP = (
+    b"default-src 'none'; style-src 'self'; img-src 'self' data:; "
+    b"base-uri 'none'; frame-ancestors 'none'"
+)
+_HTML_ONLY = (
+    (b"content-security-policy", _HTML_CSP),
+    (b"x-frame-options", b"DENY"),
+    (b"cross-origin-opener-policy", b"same-origin"),
+    (b"permissions-policy", b"camera=(), microphone=(), geolocation=(), payment=()"),
+)
+
+#: Two years, the preload list's own floor. `includeSubDomains` covers only
+#: hosts *under* mcp.fanmoot.com — there are none — and never fanmoot.com itself.
+_HSTS = (b"strict-transport-security", b"max-age=63072000; includeSubDomains")
+
+
+class SecurityHeadersMiddleware:
+    """Add the headers a public HTTPS origin owes its callers.
+
+    Raw ASGI for the same reason as ``RequestIdMiddleware``: ``/mcp`` answers
+    in SSE, and this only touches ``http.response.start``. A header a handler
+    already set wins. The OAuth pages set their own ``Cache-Control``, and the
+    bearer gate its own challenge, and neither is second-guessed here.
+
+    HSTS goes out only when this server's public URL is ``https``. Sent from
+    ``http://localhost`` it would be ignored by a browser anyway, and an
+    operator reading local headers should see what production actually sends.
+    Traefik terminates TLS, so the request that reaches here is plain HTTP
+    whatever the fan typed. The *configured* origin is the honest signal, and
+    the scheme of this hop is not.
+    """
+
+    def __init__(self, app: ASGIApp, *, https: bool) -> None:
+        self.app = app
+        self.https = https
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def secured(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                extra = list(_ALWAYS)
+                if headers.get("content-type", "").startswith("text/html"):
+                    extra.extend(_HTML_ONLY)
+                if self.https:
+                    extra.append(_HSTS)
+                for name, value in extra:
+                    key = name.decode("latin-1")
+                    if key not in headers:
+                        headers[key] = value.decode("latin-1")
+            await send(message)
+
+        await self.app(scope, receive, secured)

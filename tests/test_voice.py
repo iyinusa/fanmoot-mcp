@@ -190,21 +190,21 @@ def test_a_take_is_attributed_to_whoever_said_it() -> None:
     read without a name attached is one the fan hears as the assistant's own."""
     spoken = voice.take(_moot("The second goal was offside, all day."))
 
-    assert spoken == "Jo says: The second goal was offside, all day."
+    assert spoken == "Jo says: \u201cThe second goal was offside, all day.\u201d"
 
 
 def test_a_long_take_is_trimmed_at_a_word() -> None:
     spoken = voice.take(_moot("blah " * 100))
 
     assert len(spoken) < 220
-    assert spoken.endswith("…")
+    assert spoken.endswith("…\u201d")
 
 
 def test_a_link_inside_a_take_is_not_read_out() -> None:
     spoken = voice.take(_moot("Read this https://example.com/very/long/path it's damning"))
 
     assert "http" not in spoken
-    assert spoken == "Jo says: Read this it's damning"
+    assert spoken == "Jo says: \u201cRead this it's damning\u201d"
 
 
 def test_the_room_is_summarised_before_anybody_is_quoted() -> None:

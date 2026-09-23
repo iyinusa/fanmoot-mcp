@@ -37,15 +37,22 @@ import asyncio
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.fanmoot import endpoints
 from app.fanmoot.client import FanmootError, FanmootUnauthorized
 from app.logging_config import get_logger
 from app.models.base import utcnow
-from app.models.grant import REVOKED_UPSTREAM, AccessGrant, UpstreamSession
+from app.models.grant import (
+    REVOKED_KEY_RETIRED,
+    REVOKED_UNUSED,
+    REVOKED_UPSTREAM,
+    AccessGrant,
+    UpstreamSession,
+)
 from app.oauth import tokens
 from app.settings import Settings, get_settings
 
@@ -201,9 +208,9 @@ async def fanmoot_token_for(
         try:
             stored = tokens.decrypt(upstream.refresh_token_encrypted)
         except tokens.SecretUnreadable:
-            # The key rotated. Every stored grant is unreadable, which is the
-            # designed consequence of rotation rather than a fault — fans
-            # reconnect and nothing leaked.
+            # The key that wrapped it has been retired (`S7-4`) — dropped
+            # before `make rotate-keys` re-wrapped this row, or on purpose
+            # after a leak. This fan reconnects and nothing leaked.
             log.warning("upstream_session_unreadable", handle=upstream.fanmoot_handle)
             raise LinkBroken() from None
 
@@ -269,6 +276,10 @@ async def end_session(
 
     upstream.revoked_at = utcnow()
     upstream.revoked_reason = reason
+    # The credential goes with the link (`S7-4`). It has just been logged out
+    # upstream, or Fanmoot refused it, so it is dead either way. A dead
+    # credential kept as ciphertext is still something a leaked key would open.
+    upstream.refresh_token_encrypted = ""
 
     dependent = (
         await session.execute(
@@ -282,6 +293,117 @@ async def end_session(
         forget(grant.id)
         await grants_module.revoke_grant(session, grant, reason=reason, commit=False)
     await session.commit()
+
+
+@dataclass
+class Rewrapped:
+    """What ``rewrap_sessions`` did, for ``make rotate-keys`` to print."""
+
+    rewrapped: int = 0
+    #: Rewritten by a live exchange between our read and our write. Already
+    #: under the new key, because the exchange encrypts with the first one.
+    moved_on: int = 0
+    unreadable: int = 0
+    revoked: int = 0
+
+
+async def rewrap_sessions(session: AsyncSession, *, revoke_unreadable: bool = False) -> Rewrapped:
+    """Re-wrap every active upstream session under the first key (`S7-4`).
+
+    Runs beside a live server, so each write is **conditional on the ciphertext
+    it read**. The exchange above rewrites this column every time Fanmoot
+    rotates a refresh token. An unconditional write here could put back the
+    predecessor, and presenting a spent refresh token to Fanmoot looks exactly
+    like a replay: it revokes the family and signs the fan out. A row that moved
+    on in between was written under the first key anyway, so skipping it is
+    correct.
+
+    A row no configured key opens is counted and left alone unless
+    ``revoke_unreadable`` is set. Revoking it then ends the link cleanly, so the
+    fan's client is asked to reconnect, rather than failing on the next call.
+    """
+    report = Rewrapped()
+    rows = (
+        await session.execute(
+            select(UpstreamSession.id, UpstreamSession.refresh_token_encrypted).where(
+                UpstreamSession.revoked_at.is_(None)
+            )
+        )
+    ).all()
+
+    for row_id, ciphertext in rows:
+        try:
+            fresh = tokens.rotate(ciphertext)
+        except tokens.SecretUnreadable:
+            report.unreadable += 1
+            if revoke_unreadable:
+                upstream = await session.get(UpstreamSession, row_id)
+                if upstream is not None:
+                    await end_session(
+                        session, upstream, reason=REVOKED_KEY_RETIRED, notify_upstream=False
+                    )
+                    report.revoked += 1
+            continue
+
+        written = await session.execute(
+            update(UpstreamSession)
+            .where(
+                UpstreamSession.id == row_id,
+                UpstreamSession.refresh_token_encrypted == ciphertext,
+            )
+            .values(refresh_token_encrypted=fresh)
+        )
+        if getattr(written, "rowcount", 0):
+            report.rewrapped += 1
+        else:
+            report.moved_on += 1
+        await session.commit()
+
+    log.info(
+        "upstream_sessions_rewrapped",
+        rewrapped=report.rewrapped,
+        moved_on=report.moved_on,
+        unreadable=report.unreadable,
+        revoked=report.revoked,
+    )
+    return report
+
+
+async def end_unused_sessions(session: AsyncSession, *, grace_s: int) -> int:
+    """End every Fanmoot session no app is linked to any more (`S7-12`).
+
+    A session outlives its last grant in two ordinary ways. The fan
+    disconnected every app that used it, or signed in and then pressed "Not
+    now". Either way it is a working Fanmoot credential with no purpose, so it
+    is logged out upstream and its ciphertext cleared.
+
+    ``grace_s`` spares the young ones. A fan who has just signed in holds a
+    browser session that can still link an app to this row, and ending it under
+    them would fail their next consent screen for no reason.
+    """
+    cutoff = utcnow() - timedelta(seconds=grace_s)
+    linked = select(AccessGrant.id).where(
+        AccessGrant.upstream_session_id == UpstreamSession.id,
+        AccessGrant.revoked_at.is_(None),
+    )
+    unused = (
+        (
+            await session.execute(
+                select(UpstreamSession).where(
+                    UpstreamSession.revoked_at.is_(None),
+                    UpstreamSession.created_at < cutoff,
+                    ~linked.exists(),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for upstream in unused:
+        await end_session(session, upstream, reason=REVOKED_UNUSED)
+    if unused:
+        log.info("upstream_sessions_unused_ended", count=len(unused))
+    return len(unused)
 
 
 def forget(grant_id: uuid.UUID) -> None:

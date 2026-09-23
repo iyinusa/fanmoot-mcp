@@ -45,6 +45,12 @@ REVOKED_REUSE = "refresh_reuse_detected"
 REVOKED_SUPERSEDED = "superseded_by_new_grant"
 REVOKED_UPSTREAM = "upstream_session_ended"
 REVOKED_BY_CLIENT = "client_revoked"
+#: The key that wrapped the upstream session was retired before it was re-wrapped
+#: (`S7-4`). Only ever written by ``make rotate-keys --revoke-unreadable``.
+REVOKED_KEY_RETIRED = "encryption_key_retired"
+#: Signed in, but no app holds a link to it any more — disconnected, or never
+#: allowed. Swept by the daily housekeeping (`S7-12`).
+REVOKED_UNUSED = "no_app_connected"
 
 
 class UpstreamSession(UUIDPrimaryKey, Timestamps, Base):

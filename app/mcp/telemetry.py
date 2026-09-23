@@ -26,9 +26,10 @@ in a log that an operator reads over someone's shoulder.
 
 from __future__ import annotations
 
+import math
 import uuid
-from collections import deque
-from collections.abc import Callable
+from collections import defaultdict, deque
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
@@ -163,3 +164,85 @@ def grant_now() -> uuid.UUID | None:
         return uuid.UUID(str(raw))
     except ValueError:  # pragma: no cover - the verifier writes it
         return None
+
+
+# ── The latency budget (S7-1) ────────────────────────────────────────────────
+#: Alexa+ asks for an answer inside 500 ms. This is the server's share of it,
+#: leaving a hundred for the network and the client, and **a tool whose p95 is
+#: over it is a bug** (HAD-6), not a figure to report.
+BUDGET_MS = 400.0
+
+
+@dataclass(frozen=True, slots=True)
+class Latency:
+    """One tool's row in ``make latency``."""
+
+    tool: str
+    calls: int
+    errors: int
+    p50_ms: float
+    p95_ms: float
+    max_ms: float
+
+    @property
+    def over_budget(self) -> bool:
+        return self.p95_ms > BUDGET_MS
+
+
+def percentile(durations: list[float], fraction: float) -> float:
+    """Nearest-rank percentile, so the figure is a call that really happened.
+
+    Interpolating between two calls would report a latency nobody saw. With
+    twenty samples the p95 is the nineteenth-fastest, which is the honest
+    answer to "how slow is it for one fan in twenty".
+    """
+    if not durations:
+        return 0.0
+    ordered = sorted(durations)
+    rank = max(1, math.ceil(fraction * len(ordered)))
+    return ordered[rank - 1]
+
+
+def latency_table(calls: Iterable[tuple[str, float, str]]) -> list[Latency]:
+    """``(tool, duration_ms, status)`` rows in, one ``Latency`` per tool out.
+
+    Slowest p95 first, because the first line is the one someone reads.
+    """
+    durations: dict[str, list[float]] = defaultdict(list)
+    errors: dict[str, int] = defaultdict(int)
+    for tool, duration_ms, status in calls:
+        durations[tool].append(duration_ms)
+        if status != "ok":
+            errors[tool] += 1
+    rows = [
+        Latency(
+            tool=tool,
+            calls=len(values),
+            errors=errors[tool],
+            p50_ms=round(percentile(values, 0.50), 1),
+            p95_ms=round(percentile(values, 0.95), 1),
+            max_ms=round(max(values), 1),
+        )
+        for tool, values in durations.items()
+    ]
+    return sorted(rows, key=lambda row: row.p95_ms, reverse=True)
+
+
+def render_table(rows: list[Latency], *, title: str) -> str:
+    """The table ``make latency`` prints."""
+    lines = [
+        title,
+        f"{'tool':<26}{'calls':>7}{'errors':>8}{'p50 ms':>9}{'p95 ms':>9}{'max ms':>9}",
+    ]
+    for row in rows:
+        flag = "  ← over budget" if row.over_budget else ""
+        lines.append(
+            f"{row.tool:<26}{row.calls:>7}{row.errors:>8}{row.p50_ms:>9.1f}"
+            f"{row.p95_ms:>9.1f}{row.max_ms:>9.1f}{flag}"
+        )
+    over = [row.tool for row in rows if row.over_budget]
+    lines.append(
+        f"\nbudget: p95 ≤ {BUDGET_MS:.0f} ms — "
+        + (f"FAILED by {', '.join(over)}" if over else "every tool inside it")
+    )
+    return "\n".join(lines)

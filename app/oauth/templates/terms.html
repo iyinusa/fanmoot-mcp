@@ -1,0 +1,43 @@
+{# `S7-12`. A plain-English draft, not reviewed by a lawyer. #}
+{% extends "base.html" %}
+{% block title %}Terms — Fanmoot MCP{% endblock %}
+{% block body %}
+<article class="legal">
+<h1>Terms</h1>
+<p class="lede">For using <strong>{{ public_base_url }}</strong> to connect an app
+or assistant to Fanmoot. Last updated {{ updated }}.</p>
+
+<h2>What this is</h2>
+<p>A service that lets apps and assistants read Fanmoot's football conversation
+and, if you connect your account, post and react on it as you. Your Fanmoot
+account itself, and everything you post, stays under fanmoot.com's own terms and
+community rules.</p>
+
+<h2>Connecting an app</h2>
+<ul>
+  <li>An app can do only what you ticked when you connected it, and you can
+    disconnect it at any time from <a href="/oauth/connected">connected apps</a>.</li>
+  <li>What an app posts as you counts as you posting it. Read a take back
+    before you let an assistant send it.</li>
+  <li>Many apps register themselves, and Fanmoot has not vetted them. Connect
+    the ones you trust.</li>
+</ul>
+
+<h2>Fair use</h2>
+<p>Requests are rate-limited. An app or address that abuses the service may be
+slowed down, blocked or disconnected without notice. Do not use the service to
+get round anything fanmoot.com restricts.</p>
+
+<h2>No guarantees</h2>
+<p>The service is provided as it is. Scores and fixtures come from fanmoot.com
+and may be late or wrong. The service may be changed, paused or withdrawn.</p>
+
+<h2>Changes</h2>
+<p>If these terms change, the date above changes. Continuing to use a connected
+app after that means you accept the new version.</p>
+
+<h2>Questions</h2>
+<p>Write to <a href="mailto:{{ support_email }}">{{ support_email }}</a>. How your
+data is handled is described under <a href="/privacy">privacy</a>.</p>
+</article>
+{% endblock %}

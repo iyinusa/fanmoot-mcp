@@ -14,7 +14,7 @@ COMPOSE := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 MCP_URL ?= http://127.0.0.1:8080/mcp
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev test lint fmt types check inspect migrate revision downgrade record build up down logs shell clean
+.PHONY: help install dev test lint fmt types check inspect migrate revision downgrade record verify-live latency smoke rotate-keys build up down logs shell clean
 
 help:  ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -60,6 +60,21 @@ downgrade:  ## Roll back one revision
 
 record:  ## Re-capture live /v1 responses into fixtures/ (needs network)
 	$(PY) scripts/record_fixtures.py $(ARGS)
+
+verify-live:  ## Replay the recordings against production; fail if a shape drifted (S7-8)
+	$(PY) scripts/verify_live.py $(ARGS)
+
+latency:  ## p50/p95 per tool from tool_calls; ARGS="--drive <url>" to measure a server (S7-1)
+	$(PY) scripts/latency.py $(ARGS)
+
+# The origin to smoke-test. `make smoke URL=http://127.0.0.1:8080` for `make dev`.
+URL ?= https://mcp.fanmoot.com
+
+smoke:  ## Check a deployed server from outside: TLS, discovery, handshake, 401 (S7-9)
+	$(PY) scripts/smoke.py $(URL)
+
+rotate-keys:  ## Re-wrap stored Fanmoot sessions under the newest key (S7-4, docs/runbook.md)
+	$(PY) scripts/rotate_keys.py $(ARGS)
 
 build:  ## Build the Docker image
 	docker build -t fanmoot-mcp:local .

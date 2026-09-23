@@ -33,6 +33,11 @@ RUN pip install --upgrade pip && pip install .
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
+# The operator's scripts run inside the container, beside the configuration
+# they need: `make rotate-keys` and `make latency` read FMCP_DATABASE_URL and the
+# encryption keys, which live in Dokploy's environment and nowhere else.
+COPY scripts ./scripts
+COPY server.json ./
 COPY tests ./tests
 # The recorded /v1 corpus the suite replays (HAD-14). Copied because `tests`
 # is copied: a test image whose fixtures were left outside it fails on import
@@ -62,8 +67,13 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # 404 — intermittently, and only under load, which is the worst way to find
 # out. Scaling out needs either stateless mode or session affinity, and that is
 # an `S7` decision made with the latency numbers in hand, not a default set here.
+# (`S7-1` measured it: one worker clears the budget, so it stays one.)
+#
+# **No `--access-logfile`** (`S7-4`). Gunicorn's access line prints the whole
+# request target, query string included, and `RequestIdMiddleware` already logs
+# every request as JSON with the path alone. Two logs of the same request, one
+# of them carrying `/authorize`'s parameters, is one too many.
 CMD ["gunicorn", "app.main:app", \
     "-k", "uvicorn.workers.UvicornWorker", \
     "-b", "0.0.0.0:8080", \
-    "--workers", "1", \
-    "--access-logfile", "-"]
+    "--workers", "1"]

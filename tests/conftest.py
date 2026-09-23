@@ -29,9 +29,17 @@ from collections.abc import AsyncIterator, Iterator
 # without one (there is no fallback engine), and no test connects — so a real
 # host here would be a test suite that quietly depended on a developer's
 # machine.
+#
+# Port 1, not 5432. Something does try to connect: every test server's lifespan
+# installs the tool-call sink, which writes through to this URL. On a laptop
+# that runs its own PostgreSQL, 5432 *answers*. The attempts then start TLS,
+# fail authentication, and leave sockets for the garbage collector. When one is
+# finally collected it closes a descriptor number a live test connection has
+# since reused, and that test hangs in `initialize` for good. Port 1 refuses at
+# once, as 5432 does in CI.
 os.environ.setdefault("FMCP_ENV", "test")
 os.environ.setdefault(
-    "FMCP_DATABASE_URL", "postgresql+asyncpg://test:test@127.0.0.1:5432/fanmoot_mcp_test"
+    "FMCP_DATABASE_URL", "postgresql+asyncpg://test:test@127.0.0.1:1/fanmoot_mcp_test"
 )
 os.environ.setdefault("FMCP_PUBLIC_BASE_URL", "http://testserver")
 os.environ.setdefault("FMCP_FANMOOT_API_BASE_URL", "https://fanmoot.test")
@@ -43,6 +51,10 @@ os.environ.setdefault("FMCP_SECRET_ENCRYPTION_KEY", "")
 # rather than reaching for Bedrock — the suite is offline, and a test that
 # depended on a live model would be a test that failed on a train.
 os.environ.setdefault("FMCP_BEDROCK_MODEL_ID", "")
+# The warm-up loop (`S7-2`) would fetch from the moment a test server starts,
+# and a test that counts upstream calls would count its calls too.
+# `tests/test_warm.py` drives it directly.
+os.environ.setdefault("FMCP_WARM_CACHES", "false")
 # Kick-off times are spoken in a fixed zone, so "half past three" means the
 # same thing in CI as it does on a laptop in Lagos.
 os.environ.setdefault("FMCP_VOICE_TIMEZONE", "Europe/London")
@@ -59,6 +71,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E40
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from app import db as app_db  # noqa: E402
+from app import mood  # noqa: E402
 from app.db import Base  # noqa: E402
 from app.fanmoot import cache  # noqa: E402
 from app.fanmoot import client as fanmoot_client  # noqa: E402
@@ -152,9 +165,13 @@ def _forget_tool_calls() -> Iterator[None]:
     """
     telemetry.reset()
     telemetry.set_sink(None)
+    # Mood readings are cached per thread (`S7-1`), and two tests that label
+    # the same three takes must each see their own labelling run.
+    mood.reset_readings()
     yield
     telemetry.reset()
     telemetry.set_sink(None)
+    mood.reset_readings()
 
 
 @pytest.fixture

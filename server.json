@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.fanmoot.mcp/fanmoot",
+  "title": "Fanmoot",
+  "description": "Football fixtures, live scores and the argument fans are having under every match.",
+  "version": "0.1.0",
+  "websiteUrl": "https://mcp.fanmoot.com",
+  "repository": {
+    "url": "https://github.com/iyinusa/fanmoot-mcp",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://mcp.fanmoot.com/static/icons/thread.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.fanmoot.com/mcp"
+    }
+  ]
+}

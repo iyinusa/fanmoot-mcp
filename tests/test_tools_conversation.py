@@ -50,8 +50,8 @@ async def test_the_room_is_summarised_then_two_takes_are_quoted(
     spoken, payload = await call(mcp_url, "read_match_conversation", match=match["id"])
 
     assert spoken.startswith("Three takes on Arsenal against Spurs.")
-    assert "Jo says: That second goal was offside, all day." in spoken
-    assert "Ade says: Best we've played all season." in spoken
+    assert "Jo says: \u201cThat second goal was offside, all day.\u201d" in spoken
+    assert "Ade says: \u201cBest we've played all season.\u201d" in spoken
     # Three takes, two quoted: a thread read out in full is unlistenable.
     assert "Sam says" not in spoken
     assert payload["count"] == 3
@@ -73,7 +73,7 @@ async def test_the_thread_comes_back_with_the_match_it_is_under(
 
     assert payload["match"]["id"] == match["id"]
     assert payload["takes"][0]["handle"] == "gooner_jo"
-    assert payload["takes"][0]["spoken"] == "Jo says: Get in."
+    assert payload["takes"][0]["spoken"] == "Jo says: \u201cGet in.\u201d"
 
 
 async def test_newest_and_both_read_the_thread_a_different_way(
@@ -145,8 +145,8 @@ async def test_a_thread_with_replies_leads_with_the_take_then_the_answer(
 
     spoken, payload = await call(mcp_url, "read_thread", take=str(root["id"]))
 
-    assert spoken.startswith("Ade says: The manager has to go. Two replies so far.")
-    assert "Sam says: Absolute nonsense." in spoken
+    assert spoken.startswith("Ade says: \u201cThe manager has to go.\u201d Two replies so far.")
+    assert "Sam says: \u201cAbsolute nonsense.\u201d" in spoken
     assert spoken.endswith("There are seven more replies.")
     assert payload["reply_total"] == 9
     assert payload["has_more"] is True

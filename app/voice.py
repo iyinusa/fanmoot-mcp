@@ -35,6 +35,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from app import untrusted
 from app.fanmoot.models import ClockOut, MatchOut, MootOut
 from app.logging_config import get_logger
 from app.settings import get_settings
@@ -509,16 +510,18 @@ def take(moot: MootOut) -> str:
     strangers talking, and a quoted opinion read without a name attached is an
     opinion the fan will hear as the assistant's own.
     """
-    body = " ".join(_LINK.sub("", moot.body).split())
+    body = untrusted.clean(_LINK.sub("", moot.body))
     if not body:
         # A take that was nothing but a link still has to say something.
-        body = "a link, with nothing said about it"
+        return f"{untrusted.quotable(moot.author.name or moot.author.handle)} shared a link."
     if len(body) > QUOTE_LIMIT:
         # Trimmed at a word, with the punctuation that word was carrying
         # dropped: "…on the pitch.…" is a sentence that ended twice.
         body = body[: QUOTE_LIMIT - 1].rsplit(" ", 1)[0].rstrip(".,;:!? ") + "…"
-    name = moot.author.name or moot.author.handle
-    return f"{name} says: {body}"
+    # Quoted, and the quote cannot be closed from inside (`S7-3`): what a
+    # stranger typed reaches the model as something somebody said, never as a
+    # sentence of this server's.
+    return untrusted.quote(moot.author.name or moot.author.handle, body)
 
 
 def conversation_line(moots: list[MootOut], *, subject: str = "this", remaining: int = 0) -> str:

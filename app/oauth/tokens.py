@@ -21,6 +21,15 @@ nothing to guess, and a per-lookup Argon2 verification would add tens of
 milliseconds to every tool call for no attacker cost. A fast digest is correct
 here and slow hashing is correct there.
 
+**Rotation without a reconnect** (`S7-4`). The key setting takes a
+comma-separated list and the envelope is a ``MultiFernet``: the first key wraps
+everything written, every key opens what it wrapped. ``rotate`` re-wraps one
+ciphertext under the first key, and ``scripts/rotate_keys.py`` runs it over every
+stored session — so an old key can be retired without signing a single fan out.
+The exchange in ``app.oauth.upstream`` rewrites a session each time Fanmoot
+rotates its refresh token, so an active link migrates on its own within a
+quarter of an hour; the script is for the ones nobody has used since.
+
 **Why the server refuses rather than degrades without a key.** ``can_store_grants``
 is False when ``FMCP_SECRET_ENCRYPTION_KEY`` is empty, and every path that would
 write a fan's upstream credentials raises ``SecretsUnavailable``. The read tools
@@ -36,7 +45,7 @@ import hmac
 import secrets
 from functools import lru_cache
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 from app.settings import get_settings
 
@@ -61,10 +70,11 @@ class SecretsUnavailable(RuntimeError):
 class SecretUnreadable(RuntimeError):
     """The stored ciphertext will not open with the current key.
 
-    In practice: the key was rotated. Every stored grant becomes unreadable and
-    every fan reconnects, which is the *designed* consequence of rotation
-    (nothing leaks) rather than a fault — so this is translated into "reconnect
-    your Fanmoot account" wherever a fan can see it.
+    In practice: a key was retired before ``make rotate-keys`` re-wrapped what
+    it held, or it was dropped on purpose after a suspected leak. Every session
+    it wrapped becomes unreadable and those fans reconnect, which is the
+    *designed* consequence (nothing leaks) rather than a fault — so this is
+    translated into "reconnect your Fanmoot account" wherever a fan can see it.
     """
 
 
@@ -103,23 +113,27 @@ def matches(presented: str, stored_hash: str | None) -> bool:
 
 
 @lru_cache
-def _box() -> Fernet:
-    settings = get_settings()
-    key = settings.secret_encryption_key.strip()
-    if not key:
+def _box() -> MultiFernet:
+    keys = get_settings().encryption_keys
+    if not keys:
         raise SecretsUnavailable(
             "FMCP_SECRET_ENCRYPTION_KEY is not set, so this server will not store a fan's "
             "Fanmoot credentials. Generate one with: python -c "
             '"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
         )
-    try:
-        return Fernet(key.encode("utf-8"))
-    except (ValueError, TypeError) as exc:
-        raise SecretsUnavailable(
-            "FMCP_SECRET_ENCRYPTION_KEY is not a valid Fernet key (32 url-safe base64-encoded "
-            "bytes). Generate one with: python -c "
-            '"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
-        ) from exc
+    boxes: list[Fernet] = []
+    for position, key in enumerate(keys, start=1):
+        try:
+            boxes.append(Fernet(key.encode("utf-8")))
+        except (ValueError, TypeError) as exc:
+            # Which one, by position — never the key itself, which is the
+            # secret this message would otherwise print into a log.
+            raise SecretsUnavailable(
+                f"Key {position} of FMCP_SECRET_ENCRYPTION_KEY is not a valid Fernet key "
+                "(32 url-safe base64-encoded bytes). Generate one with: python -c "
+                '"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+            ) from exc
+    return MultiFernet(boxes)
 
 
 def encrypt(plaintext: str) -> str:
@@ -137,6 +151,21 @@ def decrypt(ciphertext: str) -> str:
         ) from exc
 
 
+def rotate(ciphertext: str) -> str:
+    """Re-wrap one stored secret under the current first key.
+
+    Opens with whichever key wrapped it and seals with the newest, so running it
+    twice is harmless. Raises ``SecretUnreadable`` when no configured key opens
+    it — the key that did has already been dropped.
+    """
+    try:
+        return _box().rotate(ciphertext.encode("ascii")).decode("ascii")
+    except (InvalidToken, ValueError) as exc:
+        raise SecretUnreadable(
+            "A stored Fanmoot session will not decrypt with any configured key."
+        ) from exc
+
+
 def signing_key() -> bytes:
     """A key for signing the short-lived browser-leg state (``app.oauth.flow``).
 
@@ -145,6 +174,11 @@ def signing_key() -> bytes:
     for the flow to be able to store anything at all. Domain-separated by a
     fixed label so the signing key and the encryption key are not the same bytes
     doing two jobs.
+
+    Only the **first** key signs. A rotation therefore invalidates browser legs
+    that are in flight at the moment of the deploy — a fan half way through a
+    consent screen starts it again — which is fifteen minutes of exposure, and
+    far simpler than a signature that has to be checked against every key.
     """
     settings = get_settings()
     if not settings.can_store_grants:
@@ -153,7 +187,7 @@ def signing_key() -> bytes:
             "own state and account linking is closed."
         )
     return hashlib.sha256(
-        b"fanmoot-mcp/oauth-flow/v1|" + settings.secret_encryption_key.strip().encode("utf-8")
+        b"fanmoot-mcp/oauth-flow/v1|" + settings.encryption_keys[0].encode("utf-8")
     ).digest()
 
 

@@ -15,10 +15,62 @@ the demo (HAD-12).
 from __future__ import annotations
 
 import logging
+import re
 import sys
+from collections.abc import Mapping, MutableMapping
 from typing import Any
 
 import structlog
+
+#: Keys whose value is a credential wherever they appear (`S7-4`). No code path
+#: here logs one on purpose, and this is what keeps it that way: a future
+#: ``log.info("token_issued", **body)`` has its secrets struck out before the
+#: renderer sees them, rather than written to a log that an operator reads over
+#: somebody's shoulder.
+SENSITIVE_KEYS = frozenset(
+    {
+        "access_token",
+        "authorization",
+        "client_secret",
+        "code",
+        "code_verifier",
+        "cookie",
+        "flow_token",
+        "id_token",
+        "password",
+        "refresh_token",
+        "registration_access_token",
+        "secret",
+        "set-cookie",
+        "token",
+    }
+)
+
+#: A bearer credential inside a free-text value: an error message that quoted a
+#: header, say.
+_BEARER = re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._~+/=-]+")
+
+REDACTED = "[redacted]"
+
+
+def redact(_logger: Any, _method: str, event: MutableMapping[str, Any]) -> dict[str, Any]:
+    """structlog processor: strike credentials out of one event, recursively."""
+    return {key: _scrub(key, value) for key, value in event.items()}
+
+
+def _scrub(key: str, value: Any) -> Any:
+    if key.lower() in SENSITIVE_KEYS and value not in (None, ""):
+        return REDACTED
+    if isinstance(value, str):
+        return _BEARER.sub(r"\1 " + REDACTED, value)
+    if isinstance(value, Mapping):
+        return {k: _scrub(str(k), v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_scrub("", item) for item in value]
+    # Anything else — a tuple, an exception, a number — is passed through
+    # untouched. `exc_info` is a tuple that structlog formats later, and a
+    # processor that turned it into a list would break that formatting.
+    return value
 
 
 def configure_logging(env: str) -> None:
@@ -38,7 +90,10 @@ def configure_logging(env: str) -> None:
     )
 
     structlog.configure(
-        processors=[*shared, structlog.processors.format_exc_info, renderer],
+        # `redact` last before rendering: after the traceback has become a
+        # string, so a credential quoted in one is struck out as well, and after
+        # everything else, so nothing added by an earlier processor escapes it.
+        processors=[*shared, structlog.processors.format_exc_info, redact, renderer],
         wrapper_class=structlog.make_filtering_bound_logger(
             logging.INFO if is_prod else logging.DEBUG
         ),

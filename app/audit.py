@@ -16,14 +16,18 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any
+from datetime import timedelta
+from typing import Any, cast
 
+from sqlalchemy import CursorResult, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_sessionmaker
 from app.logging_config import get_logger
 from app.mcp import telemetry
 from app.models.audit import ConsentEvent, ToolCall
+from app.models.base import utcnow
+from app.models.grant import AuthorizationCode
 
 log = get_logger("audit")
 
@@ -119,3 +123,46 @@ async def _insert(call: telemetry.ToolCall) -> None:
 def pending_writes() -> set[asyncio.Task[Any]]:
     """The write-throughs still in flight — awaited by the lifespan on shutdown."""
     return set(_pending)
+
+
+# ── Retention (S7-12) ────────────────────────────────────────────────────────
+#: How long each log is kept. These are the numbers `/privacy` states, and
+#: ``tests/test_legal.py`` checks the page against them, so the two cannot
+#: drift apart.
+TOOL_CALL_RETENTION_DAYS = 90
+CONSENT_RETENTION_DAYS = 365
+#: An authorization code lives sixty seconds. A day past expiry, its row is
+#: only a record that somebody once started to sign in.
+CODE_RETENTION_DAYS = 1
+
+
+async def prune(session: AsyncSession) -> dict[str, int]:
+    """Delete what has outlived its retention. Run daily by the lifespan."""
+    now = utcnow()
+    removed: dict[str, int] = {}
+    for label, statement in (
+        (
+            "tool_calls",
+            delete(ToolCall).where(
+                ToolCall.created_at < now - timedelta(days=TOOL_CALL_RETENTION_DAYS)
+            ),
+        ),
+        (
+            "consent_events",
+            delete(ConsentEvent).where(
+                ConsentEvent.created_at < now - timedelta(days=CONSENT_RETENTION_DAYS)
+            ),
+        ),
+        (
+            "authorization_codes",
+            delete(AuthorizationCode).where(
+                AuthorizationCode.expires_at < now - timedelta(days=CODE_RETENTION_DAYS)
+            ),
+        ),
+    ):
+        result = cast(CursorResult[Any], await session.execute(statement))
+        removed[label] = result.rowcount or 0
+    await session.commit()
+    if any(removed.values()):
+        log.info("retention_pruned", **removed)
+    return removed

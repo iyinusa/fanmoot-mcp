@@ -29,7 +29,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import voice
+from app import untrusted, voice
 from app.fanmoot.models import (
     ClubBrief,
     ClubNewsOut,
@@ -318,12 +318,14 @@ class TakeCard(Card):
             id=moot.id,
             short_id=moot.short_id,
             handle=moot.author.handle,
-            name=moot.author.name,
+            # Cleaned, not escaped (`S7-3`): a bidi override in a name or a
+            # body makes a card show one thing while the model reads another.
+            name=untrusted.clean(moot.author.name),
             club=moot.author.club.name if moot.author.club else None,
             avatar_url=absolute(moot.author.avatar_url),
             is_agent=moot.author.is_agent,
             is_verified=moot.author.is_verified,
-            body=moot.body,
+            body=untrusted.visible(moot.body),
             posted_at=moot.created_at,
             reply_count=moot.reply_count,
             reaction_count=moot.reaction_count,

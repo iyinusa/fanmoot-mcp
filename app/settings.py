@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     # client checks its token against. No trailing slash.
     public_base_url: str = "http://localhost:8080"
 
+    # Where a fan writes about their data. Named on `/privacy` and `/terms`
+    # (`S7-12`). Fanmoot's own support address, since this is Fanmoot's service.
+    support_email: str = "support@fanmoot.com"
+
+    # The line `mcp-publisher login http` checks for at
+    # /.well-known/mcp-registry-auth (`S7-11`): `v=MCPv1; k=ed25519; p=...`. A
+    # public key. Empty serves a 404, and nothing is claimed.
+    registry_auth: str = ""
+
     # ── Upstream Fanmoot (HAD-1) ─────────────────────────────────────────────
     # The public API this server is a client of. It is never a database URL:
     # there is no path from here into Fanmoot's schema, by design.
@@ -87,6 +96,16 @@ class Settings(BaseSettings):
     # open ones are untouched — a ceiling that sheds load rather than one that
     # takes the process down with it.
     mcp_max_sessions: int = 500
+
+    # ── Cache warming (S7-2) ─────────────────────────────────────────────────
+    # Fill the live digest, the next fortnight of fixtures and the catalogue at
+    # startup, so the first call after a deploy is not the slow one, then keep
+    # them fresh every `warm_interval_s` — under the ten-second live TTL, so a
+    # fan never waits on a revalidation this loop could have made. Mostly `304`s.
+    # Off in the test suite, which counts every upstream call it makes.
+    warm_caches: bool = True
+    # 0 warms once at startup and stops.
+    warm_interval_s: float = 5.0
 
     # ── Voice (S3-1) ─────────────────────────────────────────────────────────
     # The zone kick-off times are spoken in. An MCP request carries no locale
@@ -186,6 +205,12 @@ class Settings(BaseSettings):
     # writing credentials somewhere a leak would matter.
     #
     #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    #
+    # **A comma-separated list rotates it** (`S7-4`). The first key encrypts;
+    # every key in the list decrypts. So a rotation is: put the new key in
+    # front, deploy, run `make rotate-keys` to re-wrap every stored session
+    # under it, then drop the old key and deploy again. No fan reconnects. See
+    # docs/runbook.md.
     secret_encryption_key: str = ""
 
     # ── Validators ───────────────────────────────────────────────────────────
@@ -211,6 +236,8 @@ class Settings(BaseSettings):
         "oauth_token_window_s",
         "oauth_register_limit",
         "oauth_register_window_s",
+        "warm_caches",
+        "warm_interval_s",
         mode="before",
     )
     @classmethod
@@ -304,7 +331,17 @@ class Settings(BaseSettings):
         ``/healthz`` so "the write tools are off" is something an operator reads
         rather than discovers from a failed grant.
         """
-        return bool(self.secret_encryption_key.strip())
+        return bool(self.encryption_keys)
+
+    @property
+    def encryption_keys(self) -> list[str]:
+        """``FMCP_SECRET_ENCRYPTION_KEY`` as keys, newest first.
+
+        One key is the ordinary case. More than one is a rotation in progress:
+        the first wraps everything written from now on, and the rest are only
+        ever used to open what they wrapped before.
+        """
+        return [key.strip() for key in self.secret_encryption_key.split(",") if key.strip()]
 
     @property
     def mood_uses_bedrock(self) -> bool:

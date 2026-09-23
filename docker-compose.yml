@@ -83,6 +83,24 @@ services:
       # refused rather than stored in plaintext. The read tools are unaffected.
       FMCP_SECRET_ENCRYPTION_KEY: ${FMCP_SECRET_ENCRYPTION_KEY:-}
 
+      # ── Legal and the MCP registry (S7-11, S7-12) ───────────────────────
+      FMCP_SUPPORT_EMAIL: ${FMCP_SUPPORT_EMAIL:-support@fanmoot.com}
+      FMCP_REGISTRY_AUTH: ${FMCP_REGISTRY_AUTH:-}
+
+      # ── Cache warming (S7-2) ────────────────────────────────────────────
+      FMCP_WARM_CACHES: ${FMCP_WARM_CACHES:-true}
+      FMCP_WARM_INTERVAL_S: ${FMCP_WARM_INTERVAL_S:-5}
+
+      # ── Voice and match_mood (S3) ───────────────────────────────────────
+      FMCP_VOICE_TIMEZONE: ${FMCP_VOICE_TIMEZONE:-Europe/London}
+      FMCP_BEDROCK_MODEL_ID: ${FMCP_BEDROCK_MODEL_ID:-amazon.nova-lite-v1:0}
+      FMCP_BEDROCK_REGION: ${FMCP_BEDROCK_REGION:-us-east-1}
+      # Bedrock credentials come from the standard AWS chain. On a Dokploy host
+      # with no instance role, these three are how that chain is fed.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+
     expose:
       - "8080"
 
@@ -92,7 +110,8 @@ services:
     # forking, and the asyncpg pool must be created per worker.
     #
     # One worker — see the Dockerfile's CMD for why an MCP session cannot cross
-    # a process boundary yet.
+    # a process boundary yet. No --access-logfile, for the reason given there:
+    # the application logs every request itself, without the query string.
     command: >
       sh -c '
       alembic upgrade head &&
@@ -102,7 +121,6 @@ services:
       --workers 1
       --timeout 90
       --graceful-timeout 30
-      --access-logfile -
       '
 
     # Lets the container reach a database or tunnel on the Docker host.

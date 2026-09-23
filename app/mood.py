@@ -33,13 +33,18 @@ useful.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
 import anyio
 
+from app import untrusted
+from app.fanmoot.cache import TTL_MOOD
 from app.fanmoot.models import MootOut
 from app.logging_config import get_logger
 from app.settings import get_settings
@@ -93,6 +98,15 @@ def sample(moots: list[MootOut], *, limit: int) -> list[MootOut]:
     return public[:limit]
 
 
+#: Readings already made, by the fingerprint of the takes they read (`S7-1`).
+#: A model call is most of a second, four times the latency budget, so a
+#: thread is labelled once per ``TTL_MOOD`` and not once per question. Only
+#: the *reading* is kept, meaning three counts and a sentence. The per-take
+#: labels are discarded as before, so "labels never stored" still holds.
+_readings: OrderedDict[str, tuple[float, Reading]] = OrderedDict()
+_READINGS_MAX = 256
+
+
 async def read_mood(moots: list[MootOut], *, subject: str) -> Reading:
     """Label a sampled thread and count the result.
 
@@ -100,6 +114,11 @@ async def read_mood(moots: list[MootOut], *, subject: str) -> Reading:
     call fails or answers with something unparseable. A failure here is logged
     and degraded, never raised: the fan asked what the mood was, and "the model
     timed out" is not an answer to that question.
+
+    Keyed on the takes themselves rather than on the match, so a new take
+    changes the key and is read at once. Only a failed model call is not
+    cached: a lexicon answer standing in for a timed-out model should not stand
+    in for five minutes.
     """
     settings = get_settings()
     taken = sample(moots, limit=settings.mood_sample_size)
@@ -107,23 +126,45 @@ async def read_mood(moots: list[MootOut], *, subject: str) -> Reading:
         return Reading(0, 0, 0, "", "none", 0)
 
     bodies = [_trim(moot.body) for moot in taken]
+    key = hashlib.sha256("\x1f".join(bodies).encode("utf-8")).hexdigest()
+    now = time.monotonic()
+    held = _readings.get(key)
+    if held is not None and held[0] > now:
+        _readings.move_to_end(key)
+        return held[1]
 
+    reading: Reading | None = None
+    degraded = False
     if settings.mood_uses_bedrock:
         try:
             labels, summary = await anyio.to_thread.run_sync(_label_with_bedrock, bodies)
         except Exception as exc:  # noqa: BLE001 - every failure degrades the same way
             log.warning("mood_bedrock_failed", error_type=type(exc).__name__, subject=subject)
+            degraded = True
         else:
             counts = count_labels(labels, expected=len(bodies))
-            return Reading(**counts, summary=summary, method="bedrock", sampled=len(bodies))
+            reading = Reading(**counts, summary=summary, method="bedrock", sampled=len(bodies))
 
-    counts = count_labels([_lexicon_label(body) for body in bodies], expected=len(bodies))
-    return Reading(**counts, summary="", method="lexicon", sampled=len(bodies))
+    if reading is None:
+        counts = count_labels([_lexicon_label(body) for body in bodies], expected=len(bodies))
+        reading = Reading(**counts, summary="", method="lexicon", sampled=len(bodies))
+
+    if not degraded:
+        _readings[key] = (now + TTL_MOOD, reading)
+        while len(_readings) > _READINGS_MAX:
+            _readings.popitem(last=False)
+    return reading
+
+
+def reset_readings() -> None:
+    """Test hook, and the lifespan's: forget every cached reading."""
+    _readings.clear()
 
 
 def _trim(body: str) -> str:
-    collapsed = " ".join(body.split())
-    return collapsed[:BODY_LIMIT]
+    # Fenced (`S7-3`): angle brackets become look-alikes, so a take containing
+    # `</posts>` cannot end the block it is quoted in and start giving orders.
+    return untrusted.fenced(body)[:BODY_LIMIT]
 
 
 def count_labels(labels: list[str], *, expected: int) -> dict[str, int]:

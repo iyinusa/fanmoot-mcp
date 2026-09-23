@@ -355,11 +355,16 @@ async def register(
             continue
         if not isinstance(asked, list):
             raise RegistrationRefused("invalid_client_metadata", f"{field} must be an array.")
-        unsupported = sorted({str(item) for item in asked} - set(allowed))
-        if unsupported:
+        # Extras are dropped, not refused — RFC 7591 §2 lets a server replace
+        # what a client asked for, and the row below stores `allowed` anyway.
+        # Metadata document lists the jwt-bearer grant beside the two
+        # issued here; refusing it turned every connection into "we do
+        # not recognise that app". Only a client asking for nothing we issue
+        # is refused.
+        if not {str(item) for item in asked} & set(allowed):
             raise RegistrationRefused(
                 "invalid_client_metadata",
-                f"{field} {unsupported} not supported; this server does {allowed}.",
+                f"{field} {sorted(map(str, asked))} not supported; this server does {allowed}.",
             )
 
     # A client that asks for nothing gets everything this server issues, and the

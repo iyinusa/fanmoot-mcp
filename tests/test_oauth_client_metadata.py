@@ -81,6 +81,32 @@ async def test_authorize_accepts_a_metadata_document_client(
     assert "A Self-Describing Client" in page.text
 
 
+async def test_claudes_own_document_is_accepted(oauth_db: object, oauth_env: Settings) -> None:
+    """Claude's document verbatim. It lists the jwt-bearer grant beside the two
+    issued here, and refusing the extra refused Claude altogether."""
+    url = "https://claude.ai/oauth/mcp-oauth-client-metadata"
+    document = {
+        "client_id": url,
+        "client_name": "Claude",
+        "client_uri": "https://claude.ai",
+        "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"],
+        "grant_types": [
+            "authorization_code",
+            "refresh_token",
+            "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        ],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none",
+    }
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(url).mock(return_value=httpx.Response(200, json=document))
+        async with app_db.get_sessionmaker()() as session:
+            client = await client_store.find_or_resolve(session, url)
+
+    assert client is not None
+    assert client.grant_types == client_store.GRANT_TYPES
+
+
 async def test_a_document_that_claims_another_id_is_refused(
     oauth_db: object, oauth_env: Settings
 ) -> None:

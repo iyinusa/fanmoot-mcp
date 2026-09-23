@@ -53,7 +53,7 @@ In Dokploy's environment tab. Every variable is documented in `.env.example`.
 | `FMCP_PUBLIC_BASE_URL` | `https://mcp.fanmoot.com`. No trailing slash. Every discovery document is built from it. |
 | `FMCP_DATABASE_URL` | `postgresql+asyncpg://USER:PASS@HOST:5432/fanmoot_mcp?ssl=require` |
 | `FMCP_SECRET_ENCRYPTION_KEY` | a Fernet key: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Store a copy in the password manager. Losing it signs every fan out. |
-| `FMCP_MCP_ALLOWED_ORIGINS` | `https://amazonplus.fanmoot.com` (the web demo) |
+| `FMCP_MCP_ALLOWED_ORIGINS` | `https://alexaplus.fanmoot.com` (the web demo) |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | an IAM user allowed `bedrock:InvokeModel` on `amazon.nova-lite-v1:0` in `us-east-1`. Without them `match_mood` falls back to the word list and says so. |
 | `FMCP_OAUTH_CLIENTS` | leave empty. Alexa's toolkit is not available to us (§2.0), and every other client registers itself. |
 

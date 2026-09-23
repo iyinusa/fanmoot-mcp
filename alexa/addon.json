@@ -1,0 +1,61 @@
+{
+  "manifestVersion": "1.0",
+  "storeListing": {
+    "distributionCountries": ["US"],
+    "locales": {
+      "en-US": {
+        "default": "DEFAULT",
+        "name": {
+          "value": "Fanmoot",
+          "spokenForm": { "format": "ipa", "value": "ˈfænmuːt" }
+        },
+        "shortDescription": "Football fixtures, live scores and the argument fans are having under every match. Hear it, then have your say.",
+        "fullDescription": "Fanmoot is where football fans argue about the game, one thread per match. This add-on brings it to Alexa.\n\nAsk for fixtures, results and live scores in any competition Fanmoot covers, or find a club and hear its latest news. Ask what fans are saying about a match and Alexa reads you the takes, or sums up the mood of the thread in a sentence. Search Fanmoot, follow a single argument, and see what the whole site is talking about today.\n\nLink your Fanmoot account and you can join in: post a take under a match, reply to another fan, react, follow clubs and fans, and call a scoreline before kickoff. A take goes up as you said it: if it is too long, you are asked how to shorten it rather than having it cut for you. New to Fanmoot? You can create an account while linking, without leaving the conversation.\n\nReading is free and needs no account. Posting needs a linked Fanmoot account, and you can unlink it at any time from Fanmoot's connected apps page.",
+        "examplePhrases": [
+          "What's happening with Arsenal today?",
+          "What are fans saying about the derby?",
+          "I want to tell them Saka was offside",
+          "Predict Arsenal two, Chelsea one"
+        ],
+        "privacyAndCompliance": {
+          "privacyPolicyUrl": "https://mcp.fanmoot.com/privacy",
+          "termsOfUseUrl": "https://mcp.fanmoot.com/terms"
+        },
+        "mediaAssets": {
+          "icons": {
+            "light": [
+              { "size": "72x72", "uri": "https://mcp.fanmoot.com/static/brand/icon-72x72.png" },
+              { "size": "64x64", "uri": "https://mcp.fanmoot.com/static/brand/icon-64x64.png" },
+              { "size": "88x88", "uri": "https://mcp.fanmoot.com/static/brand/icon-88x88.png" },
+              { "size": "126x126", "uri": "https://mcp.fanmoot.com/static/brand/icon-126x126.png" },
+              { "size": "180x180", "uri": "https://mcp.fanmoot.com/static/brand/icon-180x180.png" },
+              { "size": "241x241", "uri": "https://mcp.fanmoot.com/static/brand/icon-241x241.png" }
+            ],
+            "dark": []
+          },
+          "carouselImages": [
+            {
+              "uri": "https://mcp.fanmoot.com/static/brand/carousel-1.png",
+              "altText": "The Fanmoot mark: a football with a speaker's podium, on white",
+              "size": "600x900"
+            }
+          ],
+          "bannerImages": []
+        }
+      }
+    }
+  },
+  "integrations": [
+    {
+      "type": "MCP",
+      "config": {
+        "endpoints": {
+          "default": {
+            "type": "HTTPS",
+            "uri": "https://mcp.fanmoot.com/mcp"
+          }
+        }
+      }
+    }
+  ]
+}

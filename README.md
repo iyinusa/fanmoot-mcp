@@ -344,8 +344,13 @@ The server implements Alexa's account-linking contract: a pre-seeded static
 client (`FMCP_OAUTH_CLIENTS`), exact redirect-URI matching, PKCE S256,
 `resource` on authorize and token, and refresh tokens always. It has **never
 been connected to Alexa.** The Alexa+ MCP Toolkit is in preview with selected
-partners, and Amazon confirmed it is not available to hackathon participants. The web demo at `amazonplus.fanmoot.com` drives this
+partners, and Amazon confirmed it is not available to hackathon participants. The web demo at `alexaplus.fanmoot.com` drives this
 server through a simulated Alexa+ surface instead.
+
+[`alexa/addon.json`](alexa/addon.json) is the add-on manifest, written to
+Amazon's documented schema and checked against it by `tests/test_addon.py`.
+It has never been deployed or validated by Amazon's tooling. See
+[`alexa/README.md`](alexa/README.md).
 
 ### Client compatibility
 
@@ -389,7 +394,7 @@ flowchart LR
     subgraph clients[Any MCP client]
       A[Alexa+]:::c
       C[Claude / ChatGPT / Cursor]:::c
-      D[amazonplus.fanmoot.com demo]:::c
+      D[alexaplus.fanmoot.com demo]:::c
     end
     subgraph mcp[mcp.fanmoot.com — one process]
       T["/mcp — Streamable HTTP<br/>2025-11-25"]

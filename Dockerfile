@@ -38,6 +38,9 @@ COPY alembic.ini ./
 # encryption keys, which live in Dokploy's environment and nowhere else.
 COPY scripts ./scripts
 COPY server.json ./
+# The Alexa+ manifest is never read at runtime. It is copied because
+# tests/test_addon.py checks it, for the same reason as fixtures below.
+COPY alexa ./alexa
 COPY tests ./tests
 # The recorded /v1 corpus the suite replays (HAD-14). Copied because `tests`
 # is copied: a test image whose fixtures were left outside it fails on import

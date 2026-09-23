@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     # Browser origins allowed to reach /mcp, comma-separated. A non-browser
     # client — Alexa+, Claude Desktop, Cursor, curl — sends no `Origin` header
     # and is unaffected; this list exists for the ones that do, which in
-    # practice means the web demo at amazonplus.fanmoot.com and the MCP
+    # practice means the web demo at alexaplus.fanmoot.com and the MCP
     # Inspector. Empty is the safe default: every browser is refused with a 403
     # and every real client still connects.
     mcp_allowed_origins: str = ""

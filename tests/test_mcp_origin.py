@@ -101,18 +101,18 @@ def test_this_servers_own_pages_are_always_allowed() -> None:
 
 
 def test_the_demo_origin_is_allowed_once_configured() -> None:
-    policy = _policy(production=True, configured="https://amazonplus.fanmoot.com")
+    policy = _policy(production=True, configured="https://alexaplus.fanmoot.com")
 
-    assert policy.permits("https://amazonplus.fanmoot.com") is True
+    assert policy.permits("https://alexaplus.fanmoot.com") is True
     assert policy.permits("https://fanmoot.com") is False
 
 
 def test_a_configured_origin_survives_being_typed_by_a_person() -> None:
     """A trailing slash or a capital letter in ``FMCP_MCP_ALLOWED_ORIGINS``
     would otherwise refuse the very client it was added for."""
-    policy = _policy(production=True, configured=" HTTPS://AmazonPlus.Fanmoot.com/ ")
+    policy = _policy(production=True, configured=" HTTPS://AlexaPlus.Fanmoot.com/ ")
 
-    assert policy.permits("https://amazonplus.fanmoot.com") is True
+    assert policy.permits("https://alexaplus.fanmoot.com") is True
 
 
 @pytest.mark.parametrize(

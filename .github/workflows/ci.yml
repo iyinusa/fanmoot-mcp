@@ -10,9 +10,23 @@
 
 name: check
 
+# The repository is private, so every run is billed Actions minutes. Pushes to
+# main and pull requests into it are checked once each: a push to a PR branch
+# no longer runs twice, once as a push and once as the PR. Changes to prose
+# only are skipped, since no test reads a Markdown file or docs/.
+# workflow_dispatch runs it by hand from the Actions tab.
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
   pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch:
 
 concurrency:
   # A new push supersedes the run in flight for the same ref; a queue of stale
@@ -23,7 +37,9 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # A green run takes under two minutes. A hung test now fails after 30 s
+    # (pytest-timeout, pyproject.toml), so this limit is only a last resort.
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4

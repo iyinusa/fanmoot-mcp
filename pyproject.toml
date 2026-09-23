@@ -52,6 +52,7 @@ dependencies = [
 dev = [
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
+    "pytest-timeout>=2.3",  # a hung test fails in seconds, not at the CI job limit
     "ruff>=0.6",
     "mypy>=1.11",
     "types-passlib",
@@ -109,3 +110,7 @@ testpaths = ["tests"]
 # the suite rather than depending on which directory pytest happened to insert.
 pythonpath = ["."]
 filterwarnings = ["ignore::DeprecationWarning"]
+# The whole suite takes about a minute and its slowest test about a second. A
+# test still running after 30 s is hung, not slow: fail it with a traceback
+# rather than let it spend CI minutes until the job's own limit cancels it.
+timeout = 30

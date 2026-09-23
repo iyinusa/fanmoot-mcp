@@ -60,6 +60,7 @@ os.environ.setdefault("FMCP_WARM_CACHES", "false")
 os.environ.setdefault("FMCP_VOICE_TIMEZONE", "Europe/London")
 
 import asyncio  # noqa: E402
+import contextlib  # noqa: E402
 import uuid  # noqa: E402
 
 import httpx  # noqa: E402
@@ -148,10 +149,22 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
 
 
 class _Server(uvicorn.Server):
-    """uvicorn without its signal handlers, which would replace pytest's."""
+    """uvicorn without its signal handlers, which would replace pytest's.
 
-    def install_signal_handlers(self) -> None:
-        return None
+    uvicorn installs them in ``capture_signals``. ``install_signal_handlers``,
+    which this used to override, no longer exists, so the override silently did
+    nothing. That mattered for more than pytest's Ctrl-C. sse-starlette finds
+    the running uvicorn through the SIGTERM handler, polls its ``should_exit``,
+    and when it sees this fixture stop a server it sets the process-wide
+    ``AppStatus.should_exit``. From then on every SSE response in the process
+    returns before its body completes, and the next MCP handshake waits
+    forever. Whether the poll caught the teardown was timing: rare on a laptop,
+    and on every run in CI.
+    """
+
+    @contextlib.contextmanager
+    def capture_signals(self) -> Iterator[None]:
+        yield
 
 
 @pytest.fixture(autouse=True)

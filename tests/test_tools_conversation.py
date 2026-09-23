@@ -8,10 +8,12 @@ quoted.
 
 from __future__ import annotations
 
+from mcp.types import TextContent
+
 from app import voice
 from tests import scenarios
 from tests.replay import Replay
-from tests.tooling import call, refusal
+from tests.tooling import call, refusal, session_at
 
 MOOT_ID = "7c9e1183-d0a6-4e9c-af6b-6510836105e3"
 SHORT_ID = "HU6yREc6mJ"
@@ -175,3 +177,21 @@ async def test_something_that_is_not_a_take_is_answered_not_crashed(
     spoken = await refusal(mcp_url, "read_thread", take="what did they say about the goal?")
 
     assert spoken == "That does not look like a Fanmoot take. Say the link again?"
+
+
+async def test_the_model_sees_the_id_it_needs_to_reply(replay: Replay, mcp_url: str) -> None:
+    """Claude hands its model ``content`` and never ``structuredContent``. With
+    the take's id only in the latter, "reply to that one" had nothing to reply
+    to — the result has to carry it in text as well, and never in the sentence."""
+    match = scenarios.match(now=voice.now_utc(), moot_count=1)
+    take = scenarios.moot("It's about the time, let's go boys!", name="Ken")
+    _thread_of(match, [take], replay)
+
+    async with session_at(mcp_url) as session:
+        result = await session.call_tool("read_match_conversation", {"match": match["id"]})
+
+    spoken, references = (block.text for block in result.content if isinstance(block, TextContent))
+    assert str(take["id"]) not in spoken
+    assert str(take["id"]) in references
+    assert str(take["short_id"]) in references
+    assert '"spoken"' not in references

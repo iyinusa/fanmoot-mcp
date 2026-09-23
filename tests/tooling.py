@@ -56,7 +56,12 @@ async def call(
     assert result.isError is False, _text(result.content)
     assert result.content, f"{tool} answered with nothing to say"
     assert result.structuredContent is not None, f"{tool} answered with no structuredContent"
-    return _text(result.content), result.structuredContent
+    # content[0] is the sentence; content[1] is the same payload as JSON for a
+    # client whose model never sees structuredContent.
+    assert len(result.content) == 2, f"{tool} answered without its references block"
+    spoken, references = (block.text for block in result.content if isinstance(block, TextContent))
+    assert references.startswith("For follow-up tool calls only")
+    return spoken, result.structuredContent
 
 
 async def refusal(url: str, tool: str, /, *, token: str | None = None, **arguments: Any) -> str:

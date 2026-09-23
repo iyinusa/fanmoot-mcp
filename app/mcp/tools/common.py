@@ -22,6 +22,7 @@ sounding like one server (HAD-7):
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from datetime import datetime
@@ -89,12 +90,43 @@ def answer[A: Answer](payload: A) -> A:
 
     The cast is the whole of the lie, it is one line, and the tests assert both
     halves of the result it produces.
+
+    ``content[1]`` repeats the payload as JSON, as the spec asks of a tool with
+    structured output. It is not optional: Claude hands its model ``content``
+    and never ``structuredContent``, so without it the ids and links a write
+    tool needs — "reply to that one" — reached the card and never the model.
+    ``content[0]`` stays the sentence, so a client that speaks only the first
+    block still speaks only the sentence.
     """
+    structured = payload.model_dump(mode="json")
     result = CallToolResult(
-        content=[TextContent(type="text", text=payload.spoken)],
-        structuredContent=payload.model_dump(mode="json"),
+        content=[
+            TextContent(type="text", text=payload.spoken),
+            TextContent(type="text", text=_REFERENCE_HEADER + _references(structured)),
+        ],
+        structuredContent=structured,
     )
     return cast(A, result)
+
+
+_REFERENCE_HEADER = "For follow-up tool calls only — ids and links, never read aloud:\n"
+
+
+def _references(structured: dict[str, object]) -> str:
+    """The payload without the sentences it already said, or anything empty."""
+
+    def strip(value: object) -> object:
+        if isinstance(value, dict):
+            return {
+                key: strip(item)
+                for key, item in value.items()
+                if key != "spoken" and item not in (None, "", [], {})
+            }
+        if isinstance(value, list):
+            return [strip(item) for item in value]
+        return value
+
+    return json.dumps(strip(structured), ensure_ascii=False, separators=(",", ":"))
 
 
 def read_only(title: str) -> ToolAnnotations:

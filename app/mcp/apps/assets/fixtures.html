@@ -1,0 +1,203 @@
+<!doctype html>
+<!--
+  ui://fanmoot/fixtures — `S6-4`. A matchweek, grouped by day.
+
+  `upcoming_matches` sends days already grouped; `list_matches` sends a flat
+  list and this view groups it the same way, because "what's on this weekend"
+  and "who are Arsenal playing" want the same shape on screen even though they
+  are two different questions.
+
+  A result and a fixture look different on purpose: one has a score, the other
+  has a kick-off time, and the row reads as a sentence either way.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fanmoot fixtures</title>
+    <style>
+      __BASE_CSS__
+
+      .day + .day {
+        margin-top: 0.875rem;
+      }
+      .day > h2 {
+        color: var(--color-text-secondary, var(--fm-muted));
+        font-size: var(--font-text-sm-size, 0.8125rem);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.375rem;
+      }
+      .fixture {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        border-top: 1px solid var(--color-border-primary, var(--fm-line));
+      }
+      .day li:first-child .fixture,
+      .day > ul > li:first-child {
+        border-top: 0;
+      }
+      .teams {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+      .teams .v {
+        color: var(--color-text-tertiary, var(--fm-faint));
+      }
+      .teams .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .when {
+        text-align: right;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .result {
+        font-weight: var(--font-weight-semibold, 600);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1 id="heading">Fixtures</h1>
+      <p class="faint" id="summary">Waiting for the fixtures.</p>
+      <div id="days" class="stack"></div>
+      <p class="faint" id="more" hidden></p>
+    </main>
+
+    <script>
+      __BRIDGE_JS__
+    </script>
+    <script>
+      (function () {
+        var heading = document.getElementById('heading');
+        var summary = document.getElementById('summary');
+        var days = document.getElementById('days');
+        var more = document.getElementById('more');
+
+        function text(tag, className, value) {
+          var node = document.createElement(tag);
+          if (className) node.className = className;
+          if (value != null) node.textContent = value;
+          return node;
+        }
+
+        function crest(side) {
+          if (!side || !side.crest_url) return null;
+          var img = document.createElement('img');
+          img.className = 'crest';
+          img.src = side.crest_url;
+          img.alt = side.name + ' badge';
+          return img;
+        }
+
+        function sideName(side) {
+          return (side && (side.short_name || side.name)) || 'TBC';
+        }
+
+        function whenOf(match) {
+          if (match.status === 'live') {
+            var live = text('span', 'pill live');
+            live.appendChild(text('span', 'dot'));
+            live.appendChild(text('span', null, match.minute != null ? match.minute + "'" : 'Live'));
+            return live;
+          }
+          var home = match.home && match.home.score;
+          var away = match.away && match.away.score;
+          if (match.status === 'finished' && match.score_confirmed && home != null && away != null) {
+            return text('span', 'result', home + '–' + away);
+          }
+          if (match.status === 'postponed') return text('span', 'pill', 'Postponed');
+          return text('span', 'muted', match.kickoff_spoken || '');
+        }
+
+        function fixtureOf(match) {
+          var item = text('li');
+          var row = text('div', 'fixture');
+
+          var teams = text('div', 'teams');
+          var homeBadge = crest(match.home);
+          if (homeBadge) teams.appendChild(homeBadge);
+          teams.appendChild(text('span', 'name', sideName(match.home)));
+          teams.appendChild(text('span', 'v', 'v'));
+          var awayBadge = crest(match.away);
+          if (awayBadge) teams.appendChild(awayBadge);
+          teams.appendChild(text('span', 'name', sideName(match.away)));
+          row.appendChild(teams);
+
+          var when = text('div', 'when');
+          when.appendChild(whenOf(match));
+          row.appendChild(when);
+
+          item.appendChild(row);
+          return item;
+        }
+
+        function dayOf(label, matches) {
+          var section = text('section', 'day');
+          section.appendChild(text('h2', null, label));
+          var list = text('ul');
+          matches.forEach(function (match) {
+            list.appendChild(fixtureOf(match));
+          });
+          section.appendChild(list);
+          return section;
+        }
+
+        /* `list_matches` is flat. Grouping it here rather than asking the
+         * server for a second shape keeps one tool answering one question. */
+        function group(matches) {
+          var order = [];
+          var byDay = {};
+          matches.forEach(function (match) {
+            var label = match.kickoff_spoken || 'Coming up';
+            if (!byDay[label]) {
+              byDay[label] = [];
+              order.push(label);
+            }
+            byDay[label].push(match);
+          });
+          return order.map(function (label) {
+            return { day_spoken: label, matches: byDay[label] };
+          });
+        }
+
+        window.fanmoot(function (payload, result, view) {
+          var groups = payload.days && payload.days.length
+            ? payload.days
+            : group(payload.matches || []);
+
+          heading.textContent = groups.length > 1 ? "What's on" : 'Fixtures';
+          summary.textContent = payload.spoken || '';
+
+          days.replaceChildren();
+          if (!groups.length) {
+            days.appendChild(text('p', 'empty', 'Nothing on.'));
+          } else {
+            groups.forEach(function (entry) {
+              days.appendChild(dayOf(entry.day_spoken || entry.day, entry.matches || []));
+            });
+          }
+
+          var left = (payload.total || 0) - (payload.count || 0);
+          if (payload.has_more) {
+            more.hidden = false;
+            more.textContent =
+              left > 0 ? 'There are ' + left + ' more.' : 'There are more than these.';
+          } else {
+            more.hidden = true;
+          }
+
+          view.updateModelContext({ showing: 'fixtures', spoken: payload.spoken });
+        });
+      })();
+    </script>
+  </body>
+</html>

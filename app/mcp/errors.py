@@ -51,6 +51,16 @@ _UNKNOWN_TOOL = "There is no tool called {name} on this server."
 #: list of eight field names out loud is worse than one asking a question.
 _MAX_SPOKEN_FIELDS = 3
 
+#: An argument name, as a fan would hear it. Only the ones whose Python name is
+#: not already the English word: ``body`` is what Fanmoot calls the text of a
+#: moot and what the tool argument is therefore named, but "that body is too
+#: long" is not a sentence anybody says out loud.
+_SPOKEN_NAME = {
+    "body": "take",
+    "match": "match",
+    "take": "take",
+}
+
 
 class ToolInputError(Exception):
     """Something the fan said that a tool could not act on, already in words.
@@ -134,6 +144,12 @@ def _from_validation_error(exc: ValidationError) -> str:
             # again correctly, where "I could not make sense of limit" would
             # have it guess.
             return _from_bound(field, error)
+        elif error["type"] == "string_too_long":
+            # A dictated take past the ceiling (`S5-2`). Said rather than
+            # trimmed: silently truncating somebody's opinion and publishing it
+            # under their name is the one failure mode here that cannot be
+            # taken back (HAD-7).
+            return _from_length(field, error)
         else:
             wrong.append(field)
 
@@ -153,9 +169,28 @@ def _from_bound(field: str, error: Any) -> str:
     return f"{spoken.capitalize()} has to be at least {limit}."
 
 
+def _from_length(field: str, error: Any) -> str:
+    """A string past its ceiling, as the sentence that offers the way out.
+
+    Never repeats the input. ``error["input"]`` here is the take itself — a
+    fan's opinion, possibly a long one — and reading it back at them instead of
+    posting it would be the worst of both outcomes.
+    """
+    limit = (error.get("ctx") or {}).get("max_length")
+    return (
+        f"That {_spoken(field)} is longer than {limit} characters, "
+        "which is as much as Fanmoot takes. Shall I shorten it?"
+    )
+
+
+def _spoken(field: str) -> str:
+    """One argument name, in the word a fan would use for it."""
+    return _SPOKEN_NAME.get(field, field.replace("_", " "))
+
+
 def _join(fields: list[str]) -> str:
     """``["a", "b", "c"]`` → ``"a, b and c"``, truncated to what is worth saying."""
-    spoken = [field.replace("_", " ") for field in fields[:_MAX_SPOKEN_FIELDS]]
+    spoken = [_spoken(field) for field in fields[:_MAX_SPOKEN_FIELDS]]
     if len(fields) > _MAX_SPOKEN_FIELDS:
         spoken.append("a couple more things")
     if len(spoken) == 1:

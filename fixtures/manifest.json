@@ -319,6 +319,17 @@
   "synthetic": true
  },
  {
+  "file": "get_v1_users_demo_fan.json",
+  "method": "GET",
+  "path": "/v1/users/demo_fan",
+  "params": {},
+  "status": 200,
+  "etag": null,
+  "cache_control": null,
+  "recorded_at": "2026-09-22T00:00:00+00:00",
+  "synthetic": true
+ },
+ {
   "file": "get_v1_moots_7c9e1183_d0a6_4e9c_af6b_6510836105e3.json",
   "method": "GET",
   "path": "/v1/m/HU6yREc6mJ",
@@ -414,19 +425,6 @@
   "method": "POST",
   "path": "/v1/moots",
   "params": {},
-  "status": 201,
-  "etag": null,
-  "cache_control": null,
-  "recorded_at": "2026-09-22T00:00:00+00:00",
-  "synthetic": true
- },
- {
-  "file": "post_v1_moots_held.json",
-  "method": "POST",
-  "path": "/v1/moots",
-  "params": {
-   "idempotency_key": "held"
-  },
   "status": 201,
   "etag": null,
   "cache_control": null,

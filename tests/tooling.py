@@ -41,9 +41,16 @@ async def session_at(
         yield session
 
 
-async def call(url: str, tool: str, /, **arguments: Any) -> tuple[str, dict[str, Any]]:
-    """Call a tool that is expected to work. Returns ``(spoken, structured)``."""
-    async with session_at(url) as session:
+async def call(
+    url: str, tool: str, /, *, token: str | None = None, **arguments: Any
+) -> tuple[str, dict[str, Any]]:
+    """Call a tool that is expected to work. Returns ``(spoken, structured)``.
+
+    ``token`` is how an `S5` test calls an authenticated tool: the access token
+    a completed OAuth dance produced, presented exactly as a linked client
+    presents it. Without one the call is anonymous, which is every `S3` tool.
+    """
+    async with session_at(url, headers=_bearer(token)) as session:
         result = await session.call_tool(tool, arguments)
 
     assert result.isError is False, _text(result.content)
@@ -52,7 +59,7 @@ async def call(url: str, tool: str, /, **arguments: Any) -> tuple[str, dict[str,
     return _text(result.content), result.structuredContent
 
 
-async def refusal(url: str, tool: str, /, **arguments: Any) -> str:
+async def refusal(url: str, tool: str, /, *, token: str | None = None, **arguments: Any) -> str:
     """Call a tool that is expected to answer with a question or a refusal.
 
     ``isError`` is asserted true because that is the ``2025-11-25`` contract
@@ -60,7 +67,7 @@ async def refusal(url: str, tool: str, /, **arguments: Any) -> str:
     error the model can act on inside the same turn, never as a protocol error
     (``S2-6``, HAD-7).
     """
-    async with session_at(url) as session:
+    async with session_at(url, headers=_bearer(token)) as session:
         result = await session.call_tool(tool, arguments)
 
     assert result.isError is True, _text(result.content)
@@ -72,6 +79,10 @@ async def surface(url: str) -> dict[str, Tool]:
     async with session_at(url) as session:
         listing = await session.list_tools()
     return {tool.name: tool for tool in listing.tools}
+
+
+def _bearer(token: str | None) -> dict[str, str] | None:
+    return {"Authorization": f"Bearer {token}"} if token else None
 
 
 def _text(content: list[Any]) -> str:

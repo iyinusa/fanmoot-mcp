@@ -7,11 +7,12 @@ sign in *or sign up* from the client and then post in their own name.
 
 Spec era **`2025-11-25`**, Streamable HTTP, on `POST|GET /mcp`.
 
-> **In progress.** This README fills out as the milestones land. Through `S4`
-> the server answers football questions to anyone who connects and a fan can
-> link their Fanmoot account to any client; the tools that *use* that link —
-> posting, replying, reacting, predicting — arrive with `S5`. See
-> `../Amazon Hackathon.md` §6 for the milestone list.
+> **In progress.** This README fills out as the milestones land. Through `S6`
+> the server answers football questions to anyone who connects, a fan can link
+> their Fanmoot account to any client, a linked fan can post, reply, react,
+> predict and follow by tool call, and a host that supports MCP Apps renders
+> four interactive views. See `../Amazon Hackathon.md` §6 for the milestone
+> list.
 
 ## What it talks to
 
@@ -67,6 +68,66 @@ counts out with labels never stored, public moots only and never a handle, and
 the moots framed as data rather than as instructions. With no model configured
 it answers from an offline lexicon and says `"method": "lexicon"` in its
 payload, so the tool is never simply down.
+
+## What it can do for a linked fan
+
+Seven more tools, each behind an OAuth scope the fan ticked on the consent
+screen. These are what make Fanmoot a place to argue rather than a place to
+read.
+
+| Tool | What a fan is asking | Scope |
+|---|---|---|
+| `whoami` | "who am I on Fanmoot", "did that connect" | `fan.read` |
+| `post_moot` | "post that", optionally anchored to a match | `moot.write` |
+| `reply_to_moot` | answering somebody, in their thread | `moot.write` |
+| `react_to_moot` | respect, heat, tactics, banter, offside | `moot.write` |
+| `predict_match` | "call it two-one" | `predict.write` |
+| `my_predictions` | what is called, and what is still open | `fan.read` |
+| `follow` | a club, a competition or a fan | `fan.write` |
+
+Three promises hold across the ones that write, and each is tested:
+
+- **A retried frame posts once.** Every compose carries an idempotency key
+  hashed from the grant, the JSON-RPC request id and the take itself. A client
+  that retries after a dropped socket gets the moot the first attempt created;
+  two different takes can never collide.
+- **A held take is never reported as live.** Fanmoot's football-topicality gate
+  can park a post for a moderator, and the answer says so, in Fanmoot's own
+  words.
+- **Nothing is trimmed.** A dictated take past the character cap comes back as
+  "shall I shorten it?" rather than as a truncated opinion published under
+  somebody's name.
+
+Refusals from upstream reach the fan as something they can act on: an
+unconfirmed email address says where to look for the link, a prediction after
+kickoff says a take is still possible, and a rate limit says how long to wait.
+
+## What it can show
+
+Eight of the tools have a visual answer as well as a spoken one. A host that
+supports the **MCP Apps** extension (`io.modelcontextprotocol/ui`, spec
+`2026-01-26`) renders them; a host that does not gets the same sentence and the
+same `structuredContent` it always got, which is the graceful degradation the
+extension asks for.
+
+| View | Rendered for | What it is |
+|---|---|---|
+| `ui://fanmoot/scoreboard` | `get_match`, `live_scores` | Crests, the scoreline, the live minute |
+| `ui://fanmoot/thread` | `read_match_conversation`, `read_thread`, `trending_takes` | The takes, **and a composer that replies** |
+| `ui://fanmoot/fixtures` | `list_matches`, `upcoming_matches` | A matchweek grouped by day |
+| `ui://fanmoot/mood` | `match_mood` | The sentiment split as one bar and three counts |
+
+The thread view is the one that is not a picture of an answer: its composer
+calls `reply_to_moot` back through the host as a `tools/call`, on the same
+connection and the same OAuth grant, so a fan reads the argument and answers it
+without leaving the card.
+
+Each view is a single self-contained HTML document. The declared CSP has **no**
+`connectDomains` — the views never fetch, because everything they draw arrives
+in a `ui/notifications/tool-result` — and one `resourceDomains` entry, Fanmoot's
+own origin, for crests. Colours come from the host's theme variables where it
+passes them and from Fanmoot's Floodlit palette where it does not; every text
+pairing is measured against WCAG AA in the test suite rather than asserted.
 
 ## Authentication
 

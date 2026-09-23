@@ -256,6 +256,76 @@ def test_two_candidates_become_a_question() -> None:
     assert voice.ask_which([], kind="competition") == "I cannot find that competition on Fanmoot."
 
 
+# ── Acting as the fan (S5) ───────────────────────────────────────────────────
+def test_a_fan_is_introduced_by_handle_club_and_standing() -> None:
+    """On Fanmoot the club *is* the identity, so it comes before the numbers."""
+    spoken = voice.fan_line(handle="demo_fan", club="Arsenal", tenure_days=52, followers=18)
+
+    assert (
+        spoken == "You are @demo_fan, an Arsenal fan for fifty-two days. Eighteen fans follow you."
+    )
+
+
+def test_an_unconfirmed_address_is_said_out_loud() -> None:
+    """Better here than after a fan has dictated a paragraph (`S5-8`)."""
+    spoken = voice.fan_line(handle="newfan", unverified=True)
+
+    assert spoken == (
+        "You are @newfan. Your email address is not confirmed yet, so you cannot post until it is."
+    )
+
+
+def test_a_held_take_is_never_called_posted() -> None:
+    """HAD-7. Fanmoot's reason is passed on word for word — it was written for
+    the person who wrote the take."""
+    reason = "This looks like it is about something other than football."
+
+    spoken = voice.posted_line(_moot("Off topic."), held=True, gate_reason=reason)
+
+    assert spoken == f"Your take is with Fanmoot for review rather than live. {reason}"
+    assert "Posted" not in spoken
+
+
+def test_a_posted_take_says_whose_handle_it_went_out_under() -> None:
+    spoken = voice.posted_line(_moot("Two-nil flatters us."))
+
+    assert spoken.startswith("Posted your take. It's on your profile as @")
+
+
+def test_a_reaction_is_spoken_in_fanmoots_own_vocabulary() -> None:
+    """Five football-flavoured reactions, because "like" says nothing about a
+    tactical argument."""
+    assert (
+        voice.reaction_line("offside", total=4)
+        == "Done — flagged it offside. Four reactions on it now."
+    )
+    assert voice.reaction_line(None) == "Cleared your reaction on that take."
+
+
+def test_a_called_scoreline_is_read_back_as_a_person_says_it() -> None:
+    spoken = voice.prediction_line(home="Brighton", away="Arsenal", home_score=0, away_score=2)
+
+    assert spoken == "Called it: Brighton nil, Arsenal two."
+
+
+def test_predictions_are_summarised_as_counts_not_listed() -> None:
+    assert voice.predictions_line(called=1, open_matches=3) == (
+        "One prediction on the go. Three matches still open."
+    )
+    assert voice.predictions_line(called=0, open_matches=0) == (
+        "You have not called anything, and nothing is open to predict right now."
+    )
+
+
+def test_a_follow_says_what_kind_of_thing_it_was() -> None:
+    assert voice.follow_line(name="@ade", kind="user", followers=9) == (
+        "Following @ade, the fan. Nine followers now."
+    )
+    assert voice.follow_line(name="Premier League", kind="league") == (
+        "Following Premier League, the competition."
+    )
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _clock(payload: dict[str, object]) -> voice.ClockOut:
     return voice.ClockOut.model_validate(payload)

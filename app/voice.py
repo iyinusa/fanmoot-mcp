@@ -659,3 +659,115 @@ def news_line(headlines: list[str], *, club: str = "", remaining: int = 0) -> st
     if remaining > 0:
         spoken.append(more_hint(remaining, "story", "stories"))
     return " ".join(spoken)
+
+
+# ── Acting as the fan (S5) ───────────────────────────────────────────────────
+#: How a reaction sounds when it is said rather than tapped. Fanmoot's set is
+#: football-flavoured on purpose — "like" says nothing about a tactical
+#: argument — so the spoken form keeps the flavour rather than flattening all
+#: five into "reacted".
+REACTION_PHRASES = {
+    "respect": "gave it respect",
+    "heat": "called it heat",
+    "tactics": "marked it tactics",
+    "banter": "marked it banter",
+    "offside": "flagged it offside",
+}
+
+
+def fan_line(
+    *,
+    handle: str,
+    club: str = "",
+    tenure_days: int = 0,
+    followers: int = 0,
+    unverified: bool = False,
+) -> str:
+    """Who the fan is, as they would introduce themselves.
+
+    The handle is said with "at" in front of it because that is how a fan reads
+    one out, and the club comes before the numbers because on Fanmoot the club
+    *is* the identity — the follower count is trivia next to it.
+    """
+    opening = f"You are @{handle}"
+    if club:
+        opening = (
+            f"{opening}, an {club} fan"
+            if club[0].lower() in "aeiou"
+            else (f"{opening}, a {club} fan")
+        )
+        if tenure_days > 0:
+            opening = f"{opening} for {count_words(tenure_days, 'day')}"
+    spoken = [f"{opening}."]
+    if followers:
+        counted = count_words(followers, "fan")
+        spoken.append(f"{sentence(counted)} follow you.")
+    if unverified:
+        # Said out loud rather than discovered when a take goes missing: an
+        # unconfirmed address cannot post, and that is worth knowing before
+        # dictating a paragraph (`S5-8`).
+        spoken.append("Your email address is not confirmed yet, so you cannot post until it is.")
+    return " ".join(spoken)
+
+
+def posted_line(
+    moot: MootOut, *, held: bool = False, gate_reason: str = "", replying: bool = False
+) -> str:
+    """What just went to Fanmoot, honestly (HAD-7, ``S5-2``).
+
+    A held moot is **never** reported as live. Fanmoot's football-topicality
+    gate can hold a take for a moderator, and the reason it gives is passed on
+    word for word — it was written for the person who wrote the take, and
+    paraphrasing it here would be this server inventing a moderation policy.
+    """
+    what = "reply" if replying else "take"
+    if held:
+        opening = f"Your {what} is with Fanmoot for review rather than live."
+        return f"{opening} {gate_reason}".rstrip() if gate_reason else opening
+    where = f" It's on your profile as @{moot.author.handle}." if moot.author.handle else ""
+    return f"Posted your {what}.{where}"
+
+
+def reaction_line(kind: str | None, *, total: int = 0) -> str:
+    """A reaction set, changed or cleared — the same call does all three."""
+    if kind is None:
+        return "Cleared your reaction on that take."
+    phrase = REACTION_PHRASES.get(kind, f"marked it {kind}")
+    counted = f" {sentence(count_words(total, 'reaction'))} on it now." if total else ""
+    return f"Done — {phrase}.{counted}"
+
+
+def prediction_line(
+    *, home: str, away: str, home_score: int, away_score: int, kickoff: str = ""
+) -> str:
+    """A scoreline called before kickoff, read back for confirmation."""
+    called = f"{home} {score_word(home_score)}, {away} {score_word(away_score)}"
+    when = f" {kickoff}" if kickoff else ""
+    return f"Called it: {called}{when}."
+
+
+def predictions_line(*, called: int, open_matches: int) -> str:
+    """What the fan has called, and what is still open to them."""
+    if not called and not open_matches:
+        return "You have not called anything, and nothing is open to predict right now."
+    parts: list[str] = []
+    if called:
+        parts.append(sentence(f"{count_words(called, 'prediction')} on the go."))
+    else:
+        parts.append("You have not called anything yet.")
+    if open_matches:
+        parts.append(f"{sentence(count_words(open_matches, 'match', 'matches'))} still open.")
+    return " ".join(parts)
+
+
+def follow_line(*, name: str, kind: str = "club", followers: int = 0) -> str:
+    """A follow, confirmed.
+
+    No "already following" variant, and that is upstream's shape rather than an
+    omission: ``POST /v1/follow`` is idempotent and answers with the state, not
+    with whether this call is what created it. So the sentence says what is
+    true either way, which is also what a fan who asked twice wants to hear.
+    """
+    what = {"user": "fan", "league": "competition"}.get(kind, kind)
+    counted = f" {sentence(count_words(followers, 'follower'))} now." if followers else ""
+    return f"Following {name}, the {what}.{counted}"

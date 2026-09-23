@@ -1,9 +1,9 @@
 {
  "moot_id": "b2c1e4d6-7f08-4a1b-8e33-5c9d0a7f1120",
- "my_reaction": "agree",
+ "my_reaction": "respect",
  "reaction_count": 13,
  "reaction_counts": {
-  "agree": 10,
-  "disagree": 3
+  "heat": 3,
+  "respect": 10
  }
 }

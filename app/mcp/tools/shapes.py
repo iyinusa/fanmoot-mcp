@@ -35,9 +35,11 @@ from app.fanmoot.models import (
     ClubNewsOut,
     ClubOut,
     LeagueOut,
+    MatchBriefOut,
     MatchEventOut,
     MatchOut,
     MootOut,
+    PredictionOut,
     PublicUser,
 )
 from app.settings import get_settings
@@ -438,3 +440,133 @@ class MoodAnswer(Answer):
     method: str = "lexicon"
     summary: str = ""
     takes: list[TakeCard] = Field(default_factory=list)
+
+
+# ── Acting as the fan (S5) ───────────────────────────────────────────────────
+class FanAnswer(Answer):
+    """``whoami``. The fan's own account, which is a narrower thing than a
+    profile: what is here is what they would say about themselves, plus the two
+    flags that change what the rest of this surface can do for them."""
+
+    handle: str
+    name: str
+    club: ClubCard | None = None
+    #: How long they have been signed to that club, which on Fanmoot is
+    #: standing rather than trivia.
+    season: str | None = None
+    joined_at: datetime | None = None
+    tenure_days: int = 0
+    followers: int = 0
+    following: int = 0
+    is_verified: bool = False
+    #: False means they cannot post yet, whatever scope the grant carries.
+    email_verified: bool = True
+    url: str | None = None
+
+
+class PostAnswer(Answer):
+    """``post_moot`` and ``reply_to_moot``.
+
+    ``held`` and ``gate_reason`` are the fields that must never be dropped: a
+    take Fanmoot is holding for review is not live, and a client that rendered
+    this card without them would be telling a fan otherwise (HAD-7, ``S5-2``).
+    """
+
+    take: TakeCard
+    held: bool = False
+    gate_reason: str | None = None
+    #: The take this one answers, when it answers one.
+    replying_to: uuid.UUID | None = None
+
+
+class ReactionAnswer(Answer):
+    """``react_to_moot``. One call sets, changes or clears — ``reaction`` is
+    null when the fan has just cleared theirs."""
+
+    take_id: uuid.UUID
+    reaction: str | None = None
+    reaction_count: int = 0
+    reactions: dict[str, int] = Field(default_factory=dict)
+
+
+class PredictionCard(Card):
+    """One fixture and what the fan has called on it, if anything.
+
+    One card for both halves of ``my_predictions`` — the fixtures still open
+    and the calls already made — because they are the same thing at two points
+    in its life, and two cards would be two schemas to render.
+    """
+
+    match_id: uuid.UUID
+    competition: str | None = None
+    home: str
+    away: str
+    kickoff_at: datetime
+    kickoff_spoken: str = ""
+    status: str
+    called: bool = False
+    home_score: int | None = None
+    away_score: int | None = None
+    #: The real score, once there is one. Distinct from the called one above,
+    #: and that distinction is the whole card.
+    actual_home: int | None = None
+    actual_away: int | None = None
+    points: int | None = None
+    exact: bool | None = None
+    url: str | None = None
+    card_url: str | None = None
+
+    @classmethod
+    def of(
+        cls,
+        match: MatchBriefOut,
+        prediction: PredictionOut | None,
+        *,
+        now: datetime | None = None,
+    ) -> PredictionCard:
+        return cls(
+            match_id=match.id,
+            competition=match.league,
+            home=match.home.short_name if match.home else "someone",
+            away=match.away.short_name if match.away else "someone",
+            kickoff_at=match.kickoff_at,
+            kickoff_spoken=voice.kickoff_phrase(match.kickoff_at, now=now or voice.now_utc()),
+            status=match.status,
+            called=prediction is not None,
+            home_score=prediction.home_score if prediction else None,
+            away_score=prediction.away_score if prediction else None,
+            actual_home=match.home_score,
+            actual_away=match.away_score,
+            points=prediction.points if prediction else None,
+            exact=prediction.exact if prediction else None,
+            url=absolute(match.path) if match.path else None,
+            card_url=absolute(prediction.card_url) if prediction and prediction.card_url else None,
+        )
+
+
+class PredictionAnswer(Answer):
+    """``predict_match``. One call, read back so the fan can hear it."""
+
+    prediction: PredictionCard
+
+
+class PredictionsAnswer(Answer):
+    """``my_predictions``. What has been called, and what still can be."""
+
+    called: list[PredictionCard] = Field(default_factory=list)
+    open: list[PredictionCard] = Field(default_factory=list)
+    count: int = 0
+    open_count: int = 0
+    has_more: bool = False
+
+
+class FollowAnswer(Answer):
+    """``follow``. Idempotent upstream, so this is the state rather than the
+    event: ``following`` is true whether or not this call is what made it so."""
+
+    #: ``club``, ``league`` or ``user`` — Fanmoot's own words for the three.
+    target_type: str
+    name: str
+    following: bool = True
+    follower_count: int = 0
+    url: str | None = None

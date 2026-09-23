@@ -46,6 +46,7 @@ from app.fanmoot.models import (
     MyPredictionOut,
     OpenMatchOut,
     PredictionOut,
+    PublicProfile,
     ReactionState,
     SearchResponse,
     ThreadOut,
@@ -591,6 +592,24 @@ async def my_club(*, token: str, client: FanmootClient | None = None) -> Members
     """``GET /v1/me/club`` — which club this fan is signed to."""
     reply = await (client or get_client()).get("/v1/me/club", token=token)
     return MembershipOut.model_validate(reply.data)
+
+
+async def public_profile(
+    handle: str, *, token: str | None = None, client: FanmootClient | None = None
+) -> PublicProfile:
+    """``GET /v1/users/{handle}`` — the public side of an account.
+
+    ``whoami`` reads it for the follower counts, which ``/v1/me`` does not
+    carry, and runs it alongside the other two rather than after them: three
+    requests in parallel cost one round trip, three in sequence cost three
+    (HAD-6).
+
+    Passed the fan's own token on purpose: upstream counts a profile view and
+    explicitly never counts the fan's own, so asking as them is the version of
+    this call that does not inflate their own number.
+    """
+    reply = await (client or get_client()).get(f"/v1/users/{handle}", token=token)
+    return PublicProfile.model_validate(reply.data)
 
 
 async def compose_moot(

@@ -34,18 +34,23 @@ from app.fanmoot.models import (
     MyPredictionOut,
     OpenMatchOut,
     PredictionOut,
+    PublicProfile,
     ReactionState,
     SearchResponse,
     ThreadOut,
     UserResponse,
 )
-from tests.replay import Replay
+from tests.replay import Replay, fixture_body
 
 #: Read out of the recordings rather than written down, so this file does not
 #: go stale the next time `make record` runs against a different Saturday.
 MATCH_ID = "dd472da4-8efc-42be-9f7e-188a57aec488"
 MOOT_ID = "7c9e1183-d0a6-4e9c-af6b-6510836105e3"
 POSTED_MOOT_ID = "b2c1e4d6-7f08-4a1b-8e33-5c9d0a7f1120"
+
+#: The other outcome of ``POST /v1/moots``, which the manifest cannot serve
+#: alongside the first. See ``tests.replay.fixture_body``.
+HELD = "post_v1_moots_held.json"
 
 
 # ── Catalogue ────────────────────────────────────────────────────────────────
@@ -216,6 +221,15 @@ async def test_my_club(replay: Replay) -> None:
     assert membership.club.slug == "arsenal"
 
 
+async def test_public_profile(replay: Replay) -> None:
+    """``whoami`` reads this for the two counts ``/v1/me`` does not carry."""
+    profile = await endpoints.public_profile("demo_fan", token="demo")
+
+    assert isinstance(profile, PublicProfile)
+    assert profile.user.handle == "demo_fan"
+    assert profile.user.followers_count
+
+
 async def test_compose_moot_sends_the_idempotency_key_as_a_query_parameter(
     replay: Replay,
 ) -> None:
@@ -232,10 +246,15 @@ async def test_compose_moot_sends_the_idempotency_key_as_a_query_parameter(
 
 async def test_a_held_moot_is_reported_as_held(replay: Replay) -> None:
     """HAD-7's honest refusal: Fanmoot's football-topicality gate can park a
-    take for review, and we never report a post as live when it is pending."""
-    posted = await endpoints.compose_moot(
-        token="demo", body="Off topic entirely.", idempotency_key="held"
-    )
+    take for review, and we never report a post as live when it is pending.
+
+    The held body is installed over the ordinary one rather than matched on a
+    chosen idempotency key: the key a tool sends is hashed from the grant, the
+    frame and the take (`S5-2`), so no test can name it in advance.
+    """
+    replay.stub("/v1/moots", fixture_body(HELD), method="POST", status=201)
+
+    posted = await endpoints.compose_moot(token="demo", body="Off topic entirely.")
 
     assert posted.held is True
     assert posted.gate_reason
@@ -243,10 +262,12 @@ async def test_a_held_moot_is_reported_as_held(replay: Replay) -> None:
 
 
 async def test_react_to_moot(replay: Replay) -> None:
-    state = await endpoints.react_to_moot(POSTED_MOOT_ID, token="demo", kind="agree")
+    """The five reactions are Fanmoot's own — football-flavoured, because
+    "like" says nothing about a tactical argument."""
+    state = await endpoints.react_to_moot(POSTED_MOOT_ID, token="demo", kind="respect")
 
     assert isinstance(state, ReactionState)
-    assert state.my_reaction == "agree"
+    assert state.my_reaction == "respect"
 
 
 async def test_predict_match(replay: Replay) -> None:
@@ -403,6 +424,7 @@ async def test_no_wrapper_is_left_untested() -> None:
         "club_news",
         "me",
         "my_club",
+        "public_profile",
         "compose_moot",
         "react_to_moot",
         "predict_match",

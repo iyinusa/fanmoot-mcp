@@ -37,13 +37,14 @@ from starlette.requests import Request
 
 from app import __version__
 from app.mcp import errors, telemetry
+from app.mcp.apps import register_views
 from app.mcp.frames import InstrumentedServer
 from app.mcp.instructions import (
     SERVER_DESCRIPTION,
     SERVER_INSTRUCTIONS,
     SERVER_TITLE,
 )
-from app.mcp.tools import register_read_tools
+from app.mcp.tools import register_read_tools, register_write_tools
 
 #: The handle, not the name. Clients key configuration off this and the MCP
 #: registry entry will use it, so it does not change once published.
@@ -90,11 +91,23 @@ class FanmootMCP(FastMCP[Any]):
         # where a raw JSON Schema check would refuse it.
         server.call_tool(validate_input=False)(self._call_tool_recorded)
 
-        # The surface itself (`S3`). Registered on the instance rather than in
-        # `get_server`, because a server that answers `tools/list` with nothing
-        # is not this server — and a test that wants an empty one builds a bare
-        # `FastMCP` instead.
+        # The surface itself (`S3`, `S5`). Registered on the instance rather
+        # than in `get_server`, because a server that answers `tools/list` with
+        # nothing is not this server — and a test that wants an empty one builds
+        # a bare `FastMCP` instead.
+        #
+        # Both halves are always registered. The write tools are not hidden
+        # from an unlinked client: a client that cannot see them cannot ask to
+        # be linked, and the 401 challenge `S4-9` answers with is the whole
+        # mechanism account linking starts from.
         register_read_tools(self)
+        register_write_tools(self)
+
+        # The four `ui://` views (`S6`), last: they attach `_meta.ui` to tools
+        # that must already be registered, and a view pointing at a tool that
+        # does not exist is caught here rather than when a host tries to render
+        # it.
+        register_views(self)
 
     @property
     def lowlevel(self) -> LowLevelServer[Any, Request]:

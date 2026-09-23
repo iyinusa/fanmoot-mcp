@@ -38,6 +38,16 @@ _READ_TIMEOUT_S = 4.0
 #: all of which a single immediate retry usually clears.
 _RETRY_STATUSES = frozenset({500, 502, 503, 504})
 
+#: What a 401 or 403 says when Fanmoot sent no sentence of its own.
+#:
+#: Named rather than inlined because ``app.mcp.tools.acting`` has to tell the
+#: two apart: a 403 *with* a detail is Fanmoot refusing the act — "Confirm your
+#: email address to continue", "You are muted until…" — and belongs in front of
+#: the fan unedited, while a 403 without one is the credential failing and means
+#: the account needs reconnecting. Comparing against this constant is how that
+#: distinction stays true if the wording changes.
+UNAUTHORIZED_FALLBACK = "That needs you to be signed in to Fanmoot, and the sign-in didn't hold."
+
 
 class FanmootError(Exception):
     """Base for everything this client raises.
@@ -281,9 +291,7 @@ def _raise_for_status(response: httpx.Response) -> None:
     if status == httpx.codes.NOT_FOUND:
         raise FanmootNotFound(detail or "I couldn't find that on Fanmoot.")
     if status in (httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN):
-        raise FanmootUnauthorized(
-            detail or "That needs you to be signed in to Fanmoot, and the sign-in didn't hold."
-        )
+        raise FanmootUnauthorized(detail or UNAUTHORIZED_FALLBACK)
     if status == httpx.codes.TOO_MANY_REQUESTS:
         retry_after = _retry_after(response)
         wait = f" Try again in {retry_after} seconds." if retry_after else " Try again shortly."

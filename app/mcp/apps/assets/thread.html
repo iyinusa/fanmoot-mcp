@@ -1,0 +1,284 @@
+<!doctype html>
+<!--
+  ui://fanmoot/thread — `S6-3`. The one view that is not a picture of an answer.
+
+  `read_match_conversation`, `read_thread` and `trending_takes` all render here,
+  and under the takes there is a composer that calls `reply_to_moot` **through
+  the host bridge** — `tools/call`, proxied by the host, on the same server
+  connection and the same OAuth grant. That is what the extension is for: a fan
+  reads the argument and answers it without leaving the card.
+
+  Two things the composer has to be honest about, and both come straight from
+  `S5`:
+
+  * A reply Fanmoot holds for review is **not** live. `held` and `gate_reason`
+    come back in the tool's own payload and are shown word for word.
+  * A reply needs the account connected. When the host refuses the call — no
+    grant, or a scope the fan never granted — the error says so and the text
+    the fan typed stays in the box.
+
+  Takes are strangers talking. They are inserted as text, never as markup, and
+  every one is attributed to the handle that posted it.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fanmoot thread</title>
+    <style>
+      __BASE_CSS__
+
+      .take {
+        display: flex;
+        gap: 0.625rem;
+        padding: 0.625rem 0;
+        border-top: 1px solid var(--color-border-primary, var(--fm-line));
+      }
+      .take:first-of-type {
+        border-top: 0;
+      }
+      .avatar {
+        width: 1.875rem;
+        height: 1.875rem;
+        border-radius: 50%;
+        flex: none;
+        object-fit: cover;
+        background: var(--color-background-tertiary, var(--fm-raised));
+        display: grid;
+        place-items: center;
+        font-size: var(--font-text-sm-size, 0.8125rem);
+        font-weight: var(--font-weight-semibold, 600);
+        color: var(--color-text-secondary, var(--fm-muted));
+      }
+      .byline {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.375rem;
+      }
+      .handle {
+        font-weight: var(--font-weight-semibold, 600);
+      }
+      .body {
+        margin-top: 0.125rem;
+        overflow-wrap: anywhere;
+      }
+      .reactions {
+        margin-top: 0.375rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+      }
+      .composer {
+        margin-top: 0.75rem;
+        border-top: 1px solid var(--color-border-primary, var(--fm-line));
+        padding-top: 0.75rem;
+      }
+      .composer .actions {
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+      .outcome {
+        font-size: var(--font-text-sm-size, 0.8125rem);
+      }
+      .outcome.bad {
+        color: var(--color-text-danger, var(--fm-red-text));
+      }
+      .outcome.held {
+        color: var(--color-text-warning, var(--fm-amber-text));
+      }
+      .outcome.good {
+        color: var(--color-text-success, var(--fm-green-text));
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1 id="subject">The conversation</h1>
+      <p class="faint" id="summary">Waiting for the thread.</p>
+
+      <ul id="takes" aria-label="Takes from fans"></ul>
+
+      <form class="composer" id="composer" hidden>
+        <label class="sr-only" for="reply">Your reply</label>
+        <textarea
+          id="reply"
+          maxlength="1500"
+          placeholder="Say something back…"
+          aria-describedby="outcome"
+        ></textarea>
+        <div class="actions">
+          <p class="outcome" id="outcome" role="status" aria-live="polite"></p>
+          <button type="submit" id="send">Reply</button>
+        </div>
+      </form>
+    </main>
+
+    <script>
+      __BRIDGE_JS__
+    </script>
+    <script>
+      (function () {
+        var subject = document.getElementById('subject');
+        var summary = document.getElementById('summary');
+        var list = document.getElementById('takes');
+        var composer = document.getElementById('composer');
+        var box = document.getElementById('reply');
+        var send = document.getElementById('send');
+        var outcome = document.getElementById('outcome');
+        var replyingTo = null;
+        var bridge = null;
+
+        function text(tag, className, value) {
+          var node = document.createElement(tag);
+          if (className) node.className = className;
+          if (value != null) node.textContent = value;
+          return node;
+        }
+
+        function avatarOf(take) {
+          if (take.avatar_url) {
+            var img = document.createElement('img');
+            img.className = 'avatar';
+            img.src = take.avatar_url;
+            img.alt = '';
+            return img;
+          }
+          // No avatar is not a broken image: the initial is the fallback, and
+          // it is hidden from a screen reader because the handle is right
+          // beside it and saying it twice is noise.
+          var initial = text('div', 'avatar', (take.name || take.handle || '?').charAt(0));
+          initial.setAttribute('aria-hidden', 'true');
+          return initial;
+        }
+
+        function reactionsOf(take) {
+          var counts = take.reactions || {};
+          var kinds = Object.keys(counts).filter(function (kind) {
+            return counts[kind] > 0;
+          });
+          if (!kinds.length) return null;
+          var row = text('div', 'reactions');
+          kinds.forEach(function (kind) {
+            // The word and the number, never an emoji alone.
+            row.appendChild(text('span', 'pill', kind + ' ' + counts[kind]));
+          });
+          return row;
+        }
+
+        function takeOf(take) {
+          var item = text('li', 'take');
+          item.appendChild(avatarOf(take));
+
+          var body = text('div');
+          var byline = text('div', 'byline');
+          byline.appendChild(text('span', 'handle', take.name || take.handle));
+          byline.appendChild(text('span', 'faint', '@' + take.handle));
+          if (take.club) byline.appendChild(text('span', 'faint', take.club));
+          if (take.is_agent) byline.appendChild(text('span', 'pill', 'agent'));
+          body.appendChild(byline);
+
+          // textContent, not innerHTML: a moot is something a stranger typed.
+          body.appendChild(text('p', 'body', take.body));
+
+          var reactions = reactionsOf(take);
+          if (reactions) body.appendChild(reactions);
+
+          item.appendChild(body);
+          return item;
+        }
+
+        function settle(message, kind) {
+          outcome.textContent = message;
+          outcome.className = 'outcome' + (kind ? ' ' + kind : '');
+        }
+
+        composer.addEventListener('submit', function (event) {
+          event.preventDefault();
+          var body = box.value.trim();
+          if (!body || !replyingTo || !bridge) return;
+
+          send.disabled = true;
+          settle('Posting…');
+          bridge
+            .callTool('reply_to_moot', { take: replyingTo, body: body })
+            .then(function (result) {
+              var payload = (result && result.structuredContent) || {};
+              if (result && result.isError) {
+                // The tool's own sentence — "connect your account", "that take
+                // is too long" — is already written for a fan (`S5-8`).
+                settle(spokenOf(result) || 'That did not post.', 'bad');
+                return;
+              }
+              if (payload.held) {
+                settle(payload.gate_reason || 'Fanmoot is reviewing that before it goes live.', 'held');
+              } else {
+                settle('Posted.', 'good');
+              }
+              box.value = '';
+            })
+            .catch(function (error) {
+              settle(error.message || 'That did not post.', 'bad');
+            })
+            .finally(function () {
+              send.disabled = false;
+            });
+        });
+
+        function spokenOf(result) {
+          var blocks = (result && result.content) || [];
+          for (var i = 0; i < blocks.length; i++) {
+            if (blocks[i] && blocks[i].type === 'text') return blocks[i].text;
+          }
+          return '';
+        }
+
+        window.fanmoot(function (payload, result, view) {
+          bridge = view;
+
+          // Three tools land here. `read_thread` answers with one take and its
+          // replies; the other two answer with a list.
+          var root = payload.take || null;
+          var takes = payload.takes || payload.replies || [];
+          if (root) takes = [root].concat(takes);
+
+          if (payload.match && payload.match.home && payload.match.away) {
+            subject.textContent = payload.match.home.name + ' v ' + payload.match.away.name;
+          } else if (root) {
+            subject.textContent = 'The argument';
+          } else {
+            subject.textContent = 'What fans are saying';
+          }
+          summary.textContent = payload.spoken || '';
+
+          list.replaceChildren();
+          if (!takes.length) {
+            list.appendChild(text('li', 'empty', 'Nobody has said anything yet.'));
+          } else {
+            takes.forEach(function (take) {
+              list.appendChild(takeOf(take));
+            });
+          }
+
+          // The composer needs one take to answer. `read_thread` names it;
+          // for a room, the first take is the one on screen to reply to.
+          replyingTo = (root && (root.short_id || root.id)) || (takes[0] && (takes[0].short_id || takes[0].id)) || null;
+          composer.hidden = !replyingTo;
+          if (replyingTo && takes.length) {
+            var target = root || takes[0];
+            box.setAttribute(
+              'aria-label',
+              'Reply to ' + (target.name || target.handle)
+            );
+            box.placeholder = 'Reply to ' + (target.name || target.handle) + '…';
+          }
+
+          view.updateModelContext({ showing: 'thread', spoken: payload.spoken });
+        });
+      })();
+    </script>
+  </body>
+</html>

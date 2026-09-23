@@ -14,6 +14,10 @@ sounding like one server (HAD-7):
 * **The match resolver.** "Arsenal vs Spurs", a Fanmoot URL, or a UUID: three
   ways a fan can name a match, one function, so ``get_match``,
   ``read_match_conversation`` and ``match_mood`` all accept the same things.
+* **The take resolver.** The same idea for one moot — a UUID, a short id or a
+  ``fanmoot.com/m/`` link — shared by ``read_thread`` and by the write tools
+  ``S5`` adds, so "reply to that one" means the same thing on both halves of
+  the surface.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ from pydantic import Field
 
 from app import voice
 from app.fanmoot import endpoints, names
-from app.fanmoot.models import ClubOut, LeagueOut, MatchDetail, MatchOut
+from app.fanmoot.models import ClubOut, LeagueOut, MatchDetail, MatchOut, ThreadOut
 from app.mcp.errors import ToolInputError
 from app.mcp.tools.shapes import Answer, Choice
 from app.settings import get_settings
@@ -64,6 +68,10 @@ _VERSUS = re.compile(r"\s+(?:vs?\.?|versus|against|@)\s+", re.IGNORECASE)
 #: ``/matches/premier-league/2026-27/brighton-hove-albion-vs-arsenal-2026-09-19``
 #: — the canonical path on fanmoot.com, which is what a fan pastes.
 _MATCH_PATH = re.compile(r"/matches/(?P<league>[^/]+)/(?P<season>[^/]+)/(?P<slug>[^/?#]+)")
+
+#: ``fanmoot.com/m/sBUE6OlITD`` — the short id a fan can actually read out, and
+#: the one that appears in a share sheet and in a club news item.
+_SHORT_ID = re.compile(r"^(?:https?://[^/]+)?/?(?:m/)?(?P<id>[A-Za-z0-9_-]{6,24})$")
 
 
 # ── Answering ────────────────────────────────────────────────────────────────
@@ -279,3 +287,48 @@ async def resolve_match(query: str) -> MatchDetail:
     moment = now()
     chosen = min(candidates, key=lambda m: _kickoff_key(m, moment))
     return await endpoints.get_match(chosen.id)
+
+
+# ── Takes ────────────────────────────────────────────────────────────────────
+def _take_reference(reference: str) -> uuid.UUID | str:
+    """A take id, a short id, or a link to one — parsed, not fetched.
+
+    Returns the UUID when the fan already has one, and the short id otherwise.
+    Raises the question when it is neither, because "that does not look like a
+    Fanmoot take" is a sentence a fan can act on and a 404 three calls later is
+    not.
+    """
+    text = reference.strip()
+    if not text:
+        raise ToolInputError("Which take do you mean?")
+
+    match_id = _as_uuid(text)
+    if match_id is not None:
+        return match_id
+
+    short = _SHORT_ID.match(text)
+    if short is None:
+        raise ToolInputError("That does not look like a Fanmoot take. Say the link again?")
+    return short["id"]
+
+
+async def resolve_take(reference: str) -> ThreadOut:
+    """A take reference → the thread around it. ``read_thread``'s resolver."""
+    found = _take_reference(reference)
+    if isinstance(found, uuid.UUID):
+        return await endpoints.get_moot(found)
+    return await endpoints.get_moot_by_short_id(found)
+
+
+async def resolve_take_id(reference: str) -> uuid.UUID:
+    """A take reference → just the id, fetching only when it has to.
+
+    The write tools' version. ``reply_to_moot`` and ``react_to_moot`` need the
+    id and nothing else, and a fan who pasted a UUID has already given it —
+    reading the whole thread to rediscover it would be a round trip spent
+    inside a voice turn to learn what was in the argument (HAD-6).
+    """
+    found = _take_reference(reference)
+    if isinstance(found, uuid.UUID):
+        return found
+    return (await endpoints.get_moot_by_short_id(found)).moot.id

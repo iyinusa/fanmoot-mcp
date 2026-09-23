@@ -275,6 +275,18 @@ class MembershipOut(_Shape):
     tenure_days: int = 0
 
 
+class PublicProfile(_Shape):
+    """``/v1/users/{handle}`` — only the account off it.
+
+    Upstream this carries the club history and the declared history as well.
+    ``whoami`` reads it for one thing the fan's *own* account shape does not
+    have — how many follow them, and how many they follow — so that is all that
+    is declared. Everything else a profile holds, ``/v1/me/club`` already said.
+    """
+
+    user: PublicUser
+
+
 class FollowState(_Shape):
     target_type: str
     target_id: uuid.UUID

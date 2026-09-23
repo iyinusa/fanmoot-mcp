@@ -308,44 +308,20 @@ async def static_client(oauth_db: AsyncEngine, oauth_env: Settings) -> str:
     return STATIC_CLIENT_ID
 
 
+#: The fan every `S4` page test signs in as.
+OAUTH_USER = {
+    "id": "2f1c8d60-9b47-4a6e-9d1b-0c2f8e5a3b71",
+    "email": "fan@example.com",
+    "handle": "thegunner",
+    "name": "A Fan",
+    "email_verified": True,
+}
+
+
 @pytest.fixture
 def fanmoot_auth(replay: Replay) -> Replay:
-    """Fanmoot's ``/v1/auth/*``, stubbed.
-
-    Stubbed rather than recorded for the reason ``tests/test_fanmoot_endpoints``
-    gives: ``make record`` runs against the live API with a real account, and a
-    recording of ``/v1/auth/login`` would be a recording of somebody's
-    credentials being accepted.
-    """
-    body = {
-        "user": {
-            "id": "2f1c8d60-9b47-4a6e-9d1b-0c2f8e5a3b71",
-            "email": "fan@example.com",
-            "handle": "thegunner",
-            "name": "A Fan",
-            "email_verified": True,
-        },
-        "tokens": {
-            "access_token": "upstream-access-1",
-            "token_type": "Bearer",
-            "expires_in": 900,
-            "refresh_token": "upstream-refresh-1",
-        },
-    }
-    replay.stub("/v1/auth/login", body, method="POST", params={"in_body": "true"})
-    replay.stub(
-        "/v1/auth/refresh",
-        {
-            "access_token": "upstream-access-2",
-            "token_type": "Bearer",
-            "expires_in": 900,
-            "refresh_token": "upstream-refresh-2",
-        },
-        method="POST",
-        params={"in_body": "true"},
-    )
-    replay.stub("/v1/auth/logout", {"message": "Signed out."}, method="POST")
-    return replay
+    """Fanmoot's ``/v1/auth/*``, stubbed for the `S4` fan."""
+    return _stub_auth(replay, OAUTH_USER)
 
 
 @pytest.fixture
@@ -365,3 +341,78 @@ async def signed_in(oauth_db: AsyncEngine, oauth_env: Settings) -> UpstreamSessi
         session.add(row)
         await session.commit()
         return row
+
+
+#: The corpus's own fan. ``fixtures/get_v1_me.json``, ``/v1/me/club`` and
+#: ``/v1/users/demo_fan`` are all this person, so an `S5` test that links *as*
+#: them gets a grant whose handle matches the recorded account — which is what
+#: lets `whoami` read all three in one go.
+DEMO_USER = {
+    "id": "a1f0d2c4-3e5b-4a90-9c11-7d2e6b8f0004",
+    "email": "demo-fan@example.invalid",
+    "handle": "demo_fan",
+    "name": "Demo Fan",
+    "email_verified": True,
+}
+
+
+def _stub_auth(tape: Replay, user: dict[str, object]) -> Replay:
+    """Fanmoot's ``/v1/auth/*``, for one identity.
+
+    Stubbed rather than recorded for the reason ``tests/test_fanmoot_endpoints``
+    gives: ``make record`` runs against the live API with a real account, and a
+    recording of ``/v1/auth/login`` would be a recording of somebody's
+    credentials being accepted.
+    """
+    tape.stub(
+        "/v1/auth/login",
+        {
+            "user": user,
+            "tokens": {
+                "access_token": "upstream-access-1",
+                "token_type": "Bearer",
+                "expires_in": 900,
+                "refresh_token": "upstream-refresh-1",
+            },
+        },
+        method="POST",
+        params={"in_body": "true"},
+    )
+    tape.stub(
+        "/v1/auth/refresh",
+        {
+            "access_token": "upstream-access-2",
+            "token_type": "Bearer",
+            "expires_in": 900,
+            "refresh_token": "upstream-refresh-2",
+        },
+        method="POST",
+        params={"in_body": "true"},
+    )
+    tape.stub("/v1/auth/logout", {"message": "Signed out."}, method="POST")
+    return tape
+
+
+@pytest.fixture
+def fanmoot_demo(replay: Replay) -> Replay:
+    """``fanmoot_auth``, but signing in as the fan the fixtures are about."""
+    return _stub_auth(replay, DEMO_USER)
+
+
+@pytest.fixture
+async def linked_token(
+    oauth_http: httpx.AsyncClient, static_client: str, fanmoot_demo: Replay
+) -> str:
+    """A completed account link, as the access token it produced.
+
+    The whole OAuth dance really runs — authorize, sign in, consent, token —
+    because an `S5` test asserting that a tool posts as the right fan is
+    worthless if the grant behind it was inserted rather than earned (`S4-15`).
+    """
+    from tests import oauth as oauth_flow
+
+    body = await oauth_flow.linked(
+        oauth_http, client_id=STATIC_CLIENT_ID, client_secret=STATIC_CLIENT_SECRET
+    )
+    token: str = body["access_token"]
+    return token

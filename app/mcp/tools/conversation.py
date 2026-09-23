@@ -20,7 +20,6 @@ voice.
 from __future__ import annotations
 
 import asyncio
-import re
 import uuid
 from typing import Any, Literal
 
@@ -28,15 +27,10 @@ from mcp.server.fastmcp import FastMCP
 
 from app import voice
 from app.fanmoot import endpoints
-from app.fanmoot.models import MatchDetail, MootOut, ThreadOut
-from app.mcp.errors import ToolInputError
+from app.fanmoot.models import MatchDetail, MootOut
 from app.mcp.tools import common
 from app.mcp.tools.common import Limit, answer, icon, read_only
 from app.mcp.tools.shapes import ConversationAnswer, MatchCard, TakeCard, ThreadAnswer
-
-#: ``fanmoot.com/m/sBUE6OlITD`` — the short id a fan can actually read out, and
-#: the one that appears in a share sheet and in a club news item.
-_SHORT_ID = re.compile(r"^(?:https?://[^/]+)?/?(?:m/)?(?P<id>[A-Za-z0-9_-]{6,24})$")
 
 View = Literal["top", "newest", "both"]
 
@@ -91,7 +85,7 @@ def register(server: FastMCP[Any]) -> None:
         ),
     )
     async def read_thread(take: str, limit: Limit = common.LIMIT_DEFAULT) -> ThreadAnswer:
-        thread = await _resolve_take(take)
+        thread = await common.resolve_take(take)
 
         replies, spilled = common.page(thread.replies, limit)
         remaining = max(spilled, thread.reply_total - len(replies))
@@ -145,20 +139,3 @@ async def _read_thread_for(
             seen.add(moot.id)
             merged.append(moot)
     return merged, (top.next_cursor is not None or newest.next_cursor is not None)
-
-
-async def _resolve_take(reference: str) -> ThreadOut:
-    """A take id, a short id, or a link to one → the thread around it."""
-    text = reference.strip()
-    if not text:
-        raise ToolInputError("Which take do you mean?")
-
-    try:
-        return await endpoints.get_moot(uuid.UUID(text))
-    except ValueError:
-        pass
-
-    short = _SHORT_ID.match(text)
-    if short is None:
-        raise ToolInputError("That does not look like a Fanmoot take. Say the link again?")
-    return await endpoints.get_moot_by_short_id(short["id"])

@@ -82,10 +82,10 @@ async def test_the_whole_surface_answers(mcp_url: str, mcp_server: FanmootMCP) -
     """``S2-8``. Each capability is *declared and handled*.
 
     A client that finds `prompts/list` unimplemented stops asking, and the
-    prompts `S6` adds would never be discovered — so an empty list is the
-    answer that matters here, not an error.
+    prompts a later milestone adds would never be discovered — so an empty
+    list is the answer that matters here, not an error.
 
-    A tool registered by the test appears alongside the twelve `S3` installs,
+    A tool registered by the test appears alongside the server's own installs,
     which is the other half of the assertion: the surface is the server's, and
     a test can still add to it.
     """
@@ -107,7 +107,15 @@ async def test_the_whole_surface_answers(mcp_url: str, mcp_server: FanmootMCP) -
     names = [tool.name for tool in tools.tools]
     assert "whistle" in names
     assert "live_scores" in names
-    assert resources.resources == []
+    # `S6`'s four `ui://` views are the resources so far; the `fanmoot://`
+    # catalogue is not registered yet, and `prompts/list` still answers with
+    # an empty list rather than an error, which is the thing being asserted.
+    assert {str(resource.uri) for resource in resources.resources} == {
+        "ui://fanmoot/scoreboard",
+        "ui://fanmoot/thread",
+        "ui://fanmoot/fixtures",
+        "ui://fanmoot/mood",
+    }
     assert prompts.prompts == []
 
 
@@ -227,3 +235,27 @@ async def test_a_request_id_crosses_the_boundary(mcp_url: str) -> None:
         response = await http.request("PUT", mcp_url, headers={"X-Request-ID": "trace-me"})
 
     assert response.headers["X-Request-ID"] == "trace-me"
+
+
+async def test_correlation_does_not_sit_between_the_transport_and_its_stream(
+    replay: Any, mcp_url: str
+) -> None:
+    """The regression that made ``RequestIdMiddleware`` raw ASGI.
+
+    As a ``BaseHTTPMiddleware`` it ran ``/mcp`` in a second task and piped the
+    response back through a memory stream — and every frame this server answers
+    is an SSE stream. In a loaded process the bridge could see its end close
+    before a response had started and raise ``RuntimeError("No response
+    returned.")``: a 500 on a call the MCP server had already answered, and
+    from then on every session against that process failed the same way.
+
+    Sessions one after another, against one server, is the shape that surfaced
+    it. Correlation must be a wrapped ``send``, never a second task.
+    """
+    from tests.tooling import call, surface
+
+    for _ in range(5):
+        spoken, _payload = await call(mcp_url, "live_scores")
+        assert spoken
+
+    assert await surface(mcp_url)

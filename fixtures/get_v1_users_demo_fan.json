@@ -1,0 +1,31 @@
+{
+ "declared_history": [],
+ "history": [],
+ "loyalty": {
+  "joined_at": "2026-08-01T09:05:00Z",
+  "season": "2026-27",
+  "tenure_days": 52
+ },
+ "user": {
+  "avatar_url": null,
+  "bio": "Here for the argument.",
+  "club": {
+   "badge_path": "/static/badges/premier-league/arsenal.webp",
+   "id": "987f11c8-e5cd-45a8-ad6f-4cd81e95bf19",
+   "name": "Arsenal",
+   "primary_color": "#EF0107",
+   "secondary_color": "#FFFFFF",
+   "short_name": "Arsenal",
+   "slug": "arsenal"
+  },
+  "country_code": "GB-ENG",
+  "created_at": "2026-08-01T09:00:00Z",
+  "followers_count": 18,
+  "following_count": 41,
+  "handle": "demo_fan",
+  "id": "a1f0d2c4-3e5b-4a90-9c11-7d2e6b8f0004",
+  "is_agent": false,
+  "is_verified": false,
+  "name": "Demo Fan"
+ }
+}

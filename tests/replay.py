@@ -55,6 +55,17 @@ def _key(
     return method.upper(), path, cleaned
 
 
+def fixture_body(name: str) -> Any:
+    """One recorded body, read straight off disk by file name.
+
+    For the recordings the manifest deliberately does not serve — the take the
+    football gate held is the same ``POST /v1/moots`` as the one it let
+    through, so only one of the two can be the automatic answer and the other
+    is installed by the test that wants it (see ``Replay._best_post``).
+    """
+    return json.loads((FIXTURES / name).read_text())
+
+
 def load_manifest() -> list[Recorded]:
     entries = json.loads((FIXTURES / "manifest.json").read_text())
     return [
@@ -176,14 +187,16 @@ class Replay:
         record.
 
         A GET's query string *is* its identity, so those are matched exactly.
-        A POST's is not: ``/v1/moots`` carries an ``idempotency_key`` derived
-        from the MCP request id, which is different on every call by design —
-        exact matching there would mean a fixture per request id.
+        A POST's is not: ``/v1/moots`` carries an ``idempotency_key`` hashed
+        from the grant, the MCP request id and the take, which is different on
+        every call by design — exact matching there would mean a fixture per
+        request id, and no test could name one in advance.
 
         So a recorded POST matches when everything it *did* record is present
-        in the request, and the most specific recording wins. That is what
-        lets one fixture be the ordinary post and another, keyed on a chosen
-        idempotency key, be the one the football gate held.
+        in the request, and the most specific recording wins. A test that wants
+        the other outcome of the same call — the take the football gate held —
+        installs ``fixtures/post_v1_moots_held.json`` over it with ``stub``,
+        which is why that file is on disk but not in the manifest.
         """
         best: Recorded | None = None
         for recorded in self.recordings.values():

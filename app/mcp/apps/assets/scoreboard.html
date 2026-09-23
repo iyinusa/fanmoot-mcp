@@ -1,0 +1,202 @@
+<!doctype html>
+<!--
+  ui://fanmoot/scoreboard — `S6-2`.
+
+  One match, or everything in play. `get_match` sends a single `MatchCard`;
+  `live_scores` sends a list of them, and the same markup renders both because
+  to a fan they are the same thing seen once or several times.
+
+  What this view will not do: state a score nobody has confirmed. Fanmoot marks
+  a scoreline `assumed` when a server-side clock started a match and no source
+  has looked at it since, and `score_confirmed` carries that through. The card
+  then says the match is under way and leaves the numbers out — the same rule
+  `app/voice.py` follows out loud.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fanmoot scoreboard</title>
+    <style>
+      __BASE_CSS__
+
+      .match + .match {
+        margin-top: 0.625rem;
+      }
+      .sides {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.625rem;
+      }
+      .side {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+      .side.away {
+        flex-direction: row-reverse;
+        text-align: right;
+      }
+      .side .name {
+        font-weight: var(--font-weight-semibold, 600);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .score {
+        font-size: var(--font-heading-lg-size, 1.6rem);
+        font-weight: var(--font-weight-bold, 700);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+      }
+      .score .sep {
+        color: var(--color-text-tertiary, var(--fm-faint));
+        margin: 0 0.25rem;
+        font-weight: var(--font-weight-normal, 400);
+      }
+      .unconfirmed {
+        font-size: var(--font-text-sm-size, 0.8125rem);
+        font-weight: var(--font-weight-medium, 500);
+        color: var(--color-text-warning, var(--fm-amber-text));
+      }
+      .meta {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stack" aria-live="polite" aria-atomic="false">
+      <!-- The cards are the heading a sighted reader sees. A screen reader
+           still needs one before them, so it is here and not shown. -->
+      <h1 class="sr-only">Scores</h1>
+      <div class="stack" id="board">
+        <p class="empty" id="status">Waiting for the score.</p>
+      </div>
+    </main>
+
+    <script>
+      __BRIDGE_JS__
+    </script>
+    <script>
+      (function () {
+        var board = document.getElementById('board');
+
+        function text(tag, className, value) {
+          var node = document.createElement(tag);
+          if (className) node.className = className;
+          if (value != null) node.textContent = value;
+          return node;
+        }
+
+        function crest(side) {
+          if (!side || !side.crest_url) return null;
+          var img = document.createElement('img');
+          img.className = 'crest';
+          img.src = side.crest_url;
+          // Named rather than "crest": a screen reader saying "Arsenal badge"
+          // is reading the match out; one saying "image" is not (`S6-7`).
+          img.alt = side.name + ' badge';
+          return img;
+        }
+
+        function sideOf(side, which) {
+          var wrap = text('div', 'side ' + which);
+          var badge = crest(side);
+          if (badge) wrap.appendChild(badge);
+          wrap.appendChild(text('span', 'name', (side && side.name) || 'To be confirmed'));
+          return wrap;
+        }
+
+        function scoreOf(match) {
+          if (!match.score_confirmed) {
+            return text('div', 'unconfirmed', 'Score not confirmed');
+          }
+          var home = match.home && match.home.score;
+          var away = match.away && match.away.score;
+          if (home == null || away == null) {
+            return text('div', 'score muted', match.kickoff_spoken || '');
+          }
+          var box = text('div', 'score');
+          box.appendChild(text('span', null, String(home)));
+          box.appendChild(text('span', 'sep', '–'));
+          box.appendChild(text('span', null, String(away)));
+          // The numbers are the heading a screen reader should hear as one
+          // phrase, not as three.
+          box.setAttribute('aria-label', home + ' ' + away);
+          return box;
+        }
+
+        function clockOf(match) {
+          if (match.status !== 'live') return null;
+          var pill = text('span', 'pill live');
+          pill.appendChild(text('span', 'dot'));
+          var minute = match.minute != null ? match.minute + "'" : 'Live';
+          if (match.added) minute += ' +' + match.added;
+          // "Live" is spelled as well as coloured: colour alone is not meaning.
+          pill.appendChild(text('span', null, minute));
+          return pill;
+        }
+
+        function cardOf(match) {
+          var card = text('article', 'card match');
+
+          var header = text('div', 'between');
+          header.appendChild(text('h2', null, match.competition || 'Fanmoot'));
+          var clock = clockOf(match);
+          if (clock) header.appendChild(clock);
+          else if (match.status === 'finished') header.appendChild(text('span', 'pill', 'Full time'));
+          else if (match.kickoff_spoken)
+            header.appendChild(text('span', 'pill', match.kickoff_spoken));
+          card.appendChild(header);
+
+          var sides = text('div', 'sides');
+          sides.appendChild(sideOf(match.home, 'home'));
+          sides.appendChild(scoreOf(match));
+          sides.appendChild(sideOf(match.away, 'away'));
+          card.appendChild(sides);
+
+          var meta = text('div', 'meta faint');
+          if (match.venue) meta.appendChild(text('span', null, match.venue));
+          if (match.round) meta.appendChild(text('span', null, match.round));
+          if (match.take_count)
+            meta.appendChild(
+              text('span', null, match.take_count + (match.take_count === 1 ? ' take' : ' takes'))
+            );
+          if (meta.childNodes.length) card.appendChild(meta);
+
+          return card;
+        }
+
+        window.fanmoot(function (payload, result, view) {
+          var matches = payload.matches || (payload.match ? [payload.match] : []);
+          board.replaceChildren();
+
+          if (!matches.length) {
+            // "Nothing is on" is an answer, not a blank card.
+            board.appendChild(text('p', 'empty', payload.spoken || 'Nothing on right now.'));
+          } else {
+            matches.forEach(function (match) {
+              board.appendChild(cardOf(match));
+            });
+            if (payload.has_more) {
+              board.appendChild(text('p', 'faint', 'More than this is on.'));
+            }
+          }
+
+          // What the person is looking at, so a follow-up question — "what are
+          // they saying about it" — does not start from nothing. Sent on the
+          // empty path too: that a fan is looking at an empty scoreboard is
+          // context, and the model asking "which match?" next would not be.
+          view.updateModelContext({ showing: 'scoreboard', spoken: payload.spoken });
+        });
+      })();
+    </script>
+  </body>
+</html>

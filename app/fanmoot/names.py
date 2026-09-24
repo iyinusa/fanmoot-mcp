@@ -66,13 +66,16 @@ _WORD_MATCH_DISCOUNT = 0.95
 _MAX_CANDIDATES = 3
 
 
-def normalise(text: str) -> str:
+def normalise(text: str, *, keep_club_words: bool = False) -> str:
     """The form everything is compared in.
 
     Lowercased, unaccented, punctuation-free, "the" dropped from the front, and
     club-type tokens removed. ``Atlético Madrid``, ``atletico madrid`` and
     ``Club Atletico de Madrid`` all reduce to the same string, which is what
     lets a dictionary do most of this module's work.
+
+    ``keep_club_words`` leaves "FC" and its kind in place, for the one pass that
+    needs them: a fan who says "FC Andorra" has said which Andorra.
     """
     decomposed = unicodedata.normalize("NFKD", text)
     stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
@@ -82,6 +85,8 @@ def normalise(text: str) -> str:
     words = [w for w in cleaned.split() if w]
     if words and words[0] == "the":
         words = words[1:]
+    if keep_club_words:
+        return " ".join(words)
     kept = [w for w in words if w not in _CLUB_WORDS]
     # Everything was a club word ("FC", "AC") — keep the original rather than
     # reduce a query to nothing.
@@ -150,6 +155,7 @@ class Catalogue:
         self._clubs_by_slug = {c.slug: c for c in clubs}
         self._leagues_by_slug = {league.slug: league for league in leagues}
         self._club_index = _index_clubs(clubs)
+        self._club_names = _index_full_names(clubs)
         self._league_index = _index_leagues(leagues)
 
     def club(self, slug: str) -> ClubOut | None:
@@ -166,6 +172,7 @@ class Catalogue:
             known=set(self._clubs_by_slug),
             kind="club",
             describe=self._describe_club,
+            full_names=self._club_names,
         )
 
     def resolve_competition(self, query: str) -> Resolution:
@@ -209,6 +216,20 @@ def _index_clubs(clubs: list[ClubOut]) -> dict[str, set[str]]:
     return index
 
 
+def _index_full_names(clubs: list[ClubOut]) -> dict[str, set[str]]:
+    """Each club's full name, club-type words kept → the slugs it names.
+
+    ``normalise`` drops "FC" so "Barcelona FC" and "Barcelona" meet, which also
+    makes "FC Andorra" the national team's key. This index is what lets the
+    words a fan *did* say tell the two apart.
+    """
+    index: dict[str, set[str]] = {}
+    for club in clubs:
+        if club.name:
+            index.setdefault(normalise(club.name, keep_club_words=True), set()).add(club.slug)
+    return index
+
+
 def _index_leagues(leagues: list[LeagueOut]) -> dict[str, set[str]]:
     index: dict[str, set[str]] = {}
     for league in leagues:
@@ -226,11 +247,25 @@ def _resolve(
     known: set[str],
     kind: str,
     describe: Describe,
+    full_names: dict[str, set[str]] | None = None,
 ) -> Resolution:
     key = normalise(query)
     result = Resolution(query=query)
     if not key:
         return result
+
+    # 0 — the club's full name, said with its "FC" or "AFC". Only when the fan
+    # actually said such a word: then normalising threw away the very thing
+    # that picks one club over another ("FC Andorra" is not the national
+    # team). A query without one is left to the passes below, so a curated
+    # answer — "magpies" is Newcastle, not the club slugged `magpies` — is
+    # never overridden by a smaller club's literal name.
+    if full_names:
+        literal = normalise(query, keep_club_words=True)
+        named = full_names.get(literal) if literal != key else None
+        if named and len(named) == 1:
+            result.match = describe(next(iter(named)), 1.0)
+            return result
 
     # A form that names more than one club is a question, always — checked
     # before anything else so no later pass can talk itself into an answer.

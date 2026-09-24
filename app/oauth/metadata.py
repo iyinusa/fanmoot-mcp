@@ -110,6 +110,10 @@ def authorization_server(settings: Settings | None = None) -> dict[str, Any]:
         # than one authorization server configured cannot be tricked into
         # redeeming a code at the wrong one.
         "authorization_response_iss_parameter_supported": True,
+        # `prompt=create` opens the flow on the sign-up form (OpenID Connect
+        # "Initiating User Registration" §4, which registers this field for
+        # OAuth metadata too). No other prompt value is honoured.
+        "prompt_values_supported": ["create"],
         # SEP-991 (`S4-17`): a client may identify itself by a URL that serves
         # its own metadata, instead of registering. Advertised alongside DCR
         # rather than instead of it — Claude Desktop, Cursor and the Inspector

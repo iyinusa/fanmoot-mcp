@@ -20,7 +20,7 @@ It does not claim a shipped add-on. The only check it has had is
 | `integrations[0]…uri` | `https://mcp.fanmoot.com/mcp` | Alexa requires the protected-resource metadata's `resource` to match this URL exactly, and `resource` is the MCP endpoint (`Settings.resource_uri`), not the bare host. The test holds the two together. |
 | `distributionCountries`, locale | `US`, `en-US` | The toolkit docs support nothing else today. |
 | `name.spokenForm` | IPA `ˈfænmuːt` | Optional. Included so "Fanmoot" is not read as "fan moat". |
-| `examplePhrases` | four | Drawn from the demo's scenarios (`W4-2`, `W4-3`, `W4-4`, `W4-6`). The demo reuses them word for word as its suggested prompts. |
+| `examplePhrases` | four | Drawn from the demo's scenarios (`W4-2`, `W4-3`, `W4-4`, `W4-6`). The demo writes its live prompts from what is on each day, and falls back to these phrases word for word when it cannot read that. |
 | `privacyPolicyUrl`, `termsOfUseUrl` | `/privacy`, `/terms` | Served by this server (`app/legal.py`). |
 | `icons.light`, `carouselImages` | `/static/brand/` | The schema requires all six icon sizes and at least one 600×900 carousel image. All seven are resized from Fanmoot's existing 512 px mark. They are placeholders to satisfy the schema, not store artwork. `icons.dark` and `bannerImages` are optional and left empty. |
 

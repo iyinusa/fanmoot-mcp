@@ -53,6 +53,10 @@ RESOLVES: list[tuple[str, str]] = [
     ("forest", "nottingham-forest"),
     ("newcastle", "newcastle-united"),
     ("brighton", "brighton-hove-albion"),
+    # The full name with its "FC" picks one club where the bare name is two:
+    # "Andorra" is also the national team (found by the demo's W4 run).
+    ("FC Andorra", "fc-andorra"),
+    ("fc andorra", "fc-andorra"),
     # Accents and punctuation a voice transcript will not carry.
     ("atletico madrid", "atletico-madrid"),
     ("Atlético Madrid", "atletico-madrid"),
@@ -83,7 +87,7 @@ RESOLVES: list[tuple[str, str]] = [
 ]
 
 #: Genuinely more than one club. Must ask, never guess.
-ASKS: list[str] = ["united", "city", "rovers", "wanderers", "town", "county"]
+ASKS: list[str] = ["united", "city", "rovers", "wanderers", "town", "county", "andorra"]
 
 #: Not a football club in any reading.
 REFUSES: list[str] = ["the weather", "qqqqqqqq", "", "   "]

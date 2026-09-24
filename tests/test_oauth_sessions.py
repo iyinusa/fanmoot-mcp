@@ -216,6 +216,41 @@ async def test_the_signup_page_is_not_the_dcr_endpoint(
     assert dcr.headers["content-type"].startswith("application/json")
 
 
+async def test_prompt_create_opens_the_flow_on_the_signup_form(
+    oauth_http: httpx.AsyncClient, static_client: str
+) -> None:
+    """A client that knows the fan is new — the demo's "New here" — asks for
+    ``prompt=create`` and the fan lands on Register, not on a password form."""
+    _, challenge = oauth.pkce_pair()
+
+    page = await oauth.authorize(
+        oauth_http, client_id=static_client, challenge=challenge, prompt="create"
+    )
+
+    assert page.status_code == 200
+    assert "Create your Fanmoot account" in page.text
+    # The flow token is carried, so the sign-up posts into the same request.
+    assert oauth.flow_token(page.text)
+
+
+async def test_prompt_create_is_not_skipped_for_a_browser_already_signed_in(
+    oauth_http: httpx.AsyncClient, static_client: str, fanmoot_auth: Replay
+) -> None:
+    """Asked to create an account, the server must not walk the fan to consent
+    as whoever last signed in on this tablet."""
+    _, challenge = oauth.pkce_pair()
+    first = await oauth.authorize(oauth_http, client_id=static_client, challenge=challenge)
+    await oauth.sign_in(oauth_http, first)
+
+    again = await oauth.authorize(oauth_http, client_id=static_client, challenge=challenge)
+    fresh = await oauth.authorize(
+        oauth_http, client_id=static_client, challenge=challenge, prompt="create"
+    )
+
+    assert "Allow Alexa+ to use your Fanmoot account?" in again.text
+    assert "Create your Fanmoot account" in fresh.text
+
+
 async def test_fanmoots_own_refusal_is_shown_on_the_signup_form(
     oauth_http: httpx.AsyncClient, static_client: str, replay: Replay
 ) -> None:

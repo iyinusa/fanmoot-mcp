@@ -78,6 +78,8 @@ async def test_authorization_server_metadata_has_every_endpoint(
     # RFC 9207, so a client with several authorization servers cannot be tricked
     # into redeeming a code at the wrong one.
     assert body["authorization_response_iss_parameter_supported"] is True
+    # A client may open the flow on the sign-up form, and read here that it can.
+    assert body["prompt_values_supported"] == ["create"]
 
 
 async def test_openid_configuration_serves_the_same_document(

@@ -261,6 +261,14 @@ async def authorize(request: Request, session: AsyncSession = Depends(get_sessio
         resource=resource,
     )
 
+    # `prompt=create` (OpenID Connect "Initiating User Registration"): the
+    # client knows the fan is new — the demo's "New here" scenario — so the
+    # flow opens on the Register tab rather than the password form. Checked
+    # before the browser's own sign-in, because a fan who asked to create an
+    # account must not be walked to consent as whoever last used this browser.
+    if "create" in (params.get("prompt") or "").split():
+        return _signup_page(request, pending)
+
     # Already signed in on this browser? Then skip the password and go straight
     # to consent — with a "not you?" escape, because a shared device is the
     # normal case for a football account.

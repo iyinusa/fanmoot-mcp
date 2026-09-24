@@ -69,9 +69,12 @@ async def authorize(
     resource: str | None = None,
     method: str | None = pkce.S256,
     response_type: str = "code",
+    prompt: str | None = None,
 ) -> httpx.Response:
     """``GET /authorize`` with whatever a test wants to vary."""
     params: dict[str, Any] = {"client_id": client_id, "response_type": response_type}
+    if prompt is not None:
+        params["prompt"] = prompt
     if redirect_uri is not None:
         params["redirect_uri"] = redirect_uri
     if challenge:

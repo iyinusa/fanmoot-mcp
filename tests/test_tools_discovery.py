@@ -8,9 +8,14 @@ fixture anybody would have invented.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from tests import scenarios
 from tests.replay import Replay
 from tests.tooling import call
+
+FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 
 
 # ── search_fanmoot ───────────────────────────────────────────────────────────
@@ -19,9 +24,41 @@ async def test_a_search_says_what_it_found_rather_than_reading_it_all_out(
 ) -> None:
     spoken, payload = await call(mcp_url, "search_fanmoot", query="arsenal")
 
-    assert spoken == "For arsenal: three clubs, Arsenal, Braga and Bendel Insurance."
+    # Braga and Bendel Insurance come back too, but a fan who said "arsenal"
+    # named Arsenal: reading the other two aloud is heard as "which one?".
+    assert spoken == "Found Arsenal on Fanmoot, in the Premier League."
     assert payload["count"] == 3
     assert [club["slug"] for club in payload["clubs"]][0] == "arsenal"
+
+
+async def test_a_search_for_a_country_does_not_offer_its_neighbour(
+    replay: Replay, mcp_url: str
+) -> None:
+    """Found in the Alexa demo: "what's happening with Slovenia today" came
+    back as "Slovenia, Slovakia, Slovan Bratislava, or the Slovenian PrvaLiga?
+    Which one were you looking for?" """
+    catalogue = json.loads((FIXTURES / "get_v1_clubs_8dec12f3.json").read_text())
+    clubs = {club["slug"]: club for club in catalogue["items"]}
+    replay.stub(
+        "/v1/search",
+        {
+            "query": "Slovenia",
+            "clubs": [clubs["slovakia"], clubs["slovenia"]],
+            "leagues": [{"slug": "slovenian-prvaliga", "name": "Slovenian PrvaLiga"}],
+            "people": [],
+            "moots": [],
+            "matches": [],
+        },
+        params={"q": "Slovenia", "limit": 5},
+    )
+
+    spoken, payload = await call(mcp_url, "search_fanmoot", query="Slovenia")
+
+    assert spoken.startswith("Found Slovenia on Fanmoot")
+    assert "Slovakia" not in spoken
+    assert "PrvaLiga" not in spoken
+    # Still in the data, behind the one that was named.
+    assert [club["slug"] for club in payload["clubs"]] == ["slovenia", "slovakia"]
 
 
 async def test_a_search_that_finds_nothing_says_nothing_matched(

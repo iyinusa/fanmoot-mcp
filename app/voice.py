@@ -626,13 +626,33 @@ def search_line(
     people: int,
     takes: int,
     matches: int,
+    named: str | None = None,
+    named_hint: str = "",
 ) -> str:
     """What one search turned up, in the order a fan would want it.
 
     Names first — a fan searching "arsenal" almost always means the club — then
     the volume of everything else as counts, because reading five headlines and
     five takes aloud is not an answer to "search for X".
+
+    ``named`` is the club or competition the query is exactly the name of. It
+    is said on its own, without the lookalikes the search also found: a list of
+    three names is heard as "which one?", and "Slovenia" was not a question.
     """
+    if named:
+        where = f", in the {named_hint}" if named_hint else ""
+        rest = [
+            count_words(n, one, many)
+            for n, one, many in (
+                (matches, "match", "matches"),
+                (takes, "take", "takes"),
+                (people, "fan", "fans"),
+            )
+            if n
+        ]
+        also = f" Also {join_words(rest)}." if rest else ""
+        return f"Found {named} on Fanmoot{where}.{also}"
+
     found: list[str] = []
     if clubs:
         found.append(f"{count_words(len(clubs), 'club')}, {join_words(clubs[:3])}")

@@ -68,6 +68,15 @@ def register(server: FastMCP[Any]) -> None:
         takes = [TakeCard.of(moot) for moot in found.moots[:limit]]
         matches = [MatchCard.of(match, now=moment) for match in found.matches[:limit]]
 
+        # A query that is exactly one club's or competition's name leads with
+        # it. The lookalikes stay in the data for a screen, but are not read
+        # out: "Slovenia, Slovakia or Slovan Bratislava" is a question nobody
+        # who said "Slovenia" needs asking.
+        named = await common.named_outright(query)
+        if named is not None:
+            same = clubs if named.kind == "club" else competitions
+            same[:] = [named, *(c for c in same if c.slug != named.slug)][:limit]
+
         return answer(
             SearchAnswer(
                 spoken=voice.search_line(
@@ -77,6 +86,8 @@ def register(server: FastMCP[Any]) -> None:
                     people=len(people),
                     takes=len(takes),
                     matches=len(matches),
+                    named=named.name if named else None,
+                    named_hint=named.hint if named and named.kind == "club" else "",
                 ),
                 query=query,
                 clubs=clubs,

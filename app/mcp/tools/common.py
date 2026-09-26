@@ -248,6 +248,22 @@ async def lookup_competition(query: str) -> tuple[LeagueOut | None, list[Choice]
     return None, _choices(resolution), _spoken_choices(resolution)
 
 
+async def named_outright(query: str) -> Choice | None:
+    """The club or competition a query *is* the name of, if it is one.
+
+    Only an exact, alias or full-name hit — never containment or fuzzy. This is
+    what lets ``search_fanmoot`` answer "Slovenia" with Slovenia rather than
+    with Slovenia, Slovakia and Slovan Bratislava read out as if they were
+    equally likely, which a model hears as a question it must ask.
+    """
+    catalogue = await names.get_catalogue()
+    for resolution in (catalogue.resolve_club(query), catalogue.resolve_competition(query)):
+        hit = resolution.match
+        if hit is not None and hit.score >= 1.0:
+            return Choice(slug=hit.slug, name=hit.name, kind=hit.kind, hint=hit.hint)
+    return None
+
+
 # ── Matches ──────────────────────────────────────────────────────────────────
 def _as_uuid(text: str) -> uuid.UUID | None:
     try:

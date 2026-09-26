@@ -51,7 +51,15 @@ async def test_the_workload_fits_the_budget_with_room_to_spare(
     replay.stub(moots.path, fixture_body(moots.file), params={"limit": 40})
 
     async with session_at(mcp_url) as session:
-        for _ in range(5):
+        # The first round is cold, as in `make latency --drive`: the suite runs
+        # with `S7-2`'s warm-up off, so the first `find_club` builds the whole
+        # catalogue, which production has built before a fan arrives. It is
+        # forgotten rather than measured. Twenty warm rounds after it, so the
+        # p95 is the nineteenth-fastest call rather than the one slowest, and a
+        # single scheduler hiccup on a shared CI runner is not a regression.
+        for round_ in range(21):
+            if round_ == 1:
+                telemetry.reset()
             for tool, arguments in WORKLOAD:
                 result = await session.call_tool(tool, arguments)
                 assert result.isError is False, (tool, result.content)

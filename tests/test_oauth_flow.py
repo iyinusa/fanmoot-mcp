@@ -34,7 +34,7 @@ async def test_a_fan_links_an_account_and_the_client_gets_a_token(
 
     page = await oauth.authorize(oauth_http, client_id=static_client, challenge=challenge)
     assert page.status_code == 200
-    assert "Connect Fanmoot to Alexa+" in page.text
+    assert "Sign in to Fanmoot" in page.text and "Alexa+" in page.text
 
     consent = await oauth.sign_in(oauth_http, page)
     assert consent.status_code == 200

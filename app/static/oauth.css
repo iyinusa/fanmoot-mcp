@@ -11,11 +11,39 @@
  * `[data-theme="dark"]`. A colour whose only definition lives inside a media
  * query is a colour that vanishes when the viewer's OS says the other thing.
  *
- * No web fonts. Lato is what Fanmoot uses, and one @font-face would be a
- * render-blocking request on a page whose whole job is to take a password
- * quickly — on a phone, on stadium wifi. The system stack is the fallback the
- * source file already declares.
+ * Lato, from this server, with `font-display: swap`: the wordmark is only
+ * Fanmoot's in Fanmoot's typeface, but a page whose whole job is to take a
+ * password quickly — on a phone, on stadium wifi — must never wait for a font.
+ * The text paints at once in the system stack and swaps when Lato lands.
+ *
+ * The pages are always dark (`data-theme="dark"` on the shell), in the same
+ * Floodlit night as `mcp.fanmoot.com`'s home page: two floodlights, blue and
+ * green, from the colours of the ball in the icon.
  */
+
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/lato-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/static/fonts/lato-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('/static/fonts/lato-900.woff2') format('woff2');
+}
 
 :root {
   --fm-blue: #0444c8;
@@ -27,6 +55,9 @@
 
   --fm-bg: #f7f9fc;
   --fm-surface: #ffffff;
+  --fm-field: #f7f9fc;
+  --fm-accent-2: #0444c8;
+  --fm-lime: #4fbf57;
   --fm-line: rgb(11 15 20 / 0.10);
   --fm-line-strong: rgb(11 15 20 / 0.18);
   --fm-text: #0b0f14;
@@ -48,8 +79,10 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --fm-bg: #0b0f14;
-    --fm-surface: #151b23;
+    --fm-bg: #070a0f;
+    --fm-surface: #121821;
+    --fm-field: #0b1017;
+    --fm-accent-2: #6f9bff;
     --fm-line: rgb(255 255 255 / 0.10);
     --fm-line-strong: rgb(255 255 255 / 0.20);
     --fm-text: #f7f9fc;
@@ -64,8 +97,10 @@
 }
 
 :root[data-theme='dark'] {
-  --fm-bg: #0b0f14;
-  --fm-surface: #151b23;
+  --fm-bg: #070a0f;
+  --fm-surface: #121821;
+  --fm-field: #0b1017;
+  --fm-accent-2: #6f9bff;
   --fm-line: rgb(255 255 255 / 0.10);
   --fm-line-strong: rgb(255 255 255 / 0.20);
   --fm-text: #f7f9fc;
@@ -85,11 +120,18 @@
 }
 
 body {
+  position: relative;
+  min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
+  isolation: isolate;
   /* Mobile-first, and the 16px gutter is not decorative: this page is reached
    * from a phone far more often than from a laptop. */
-  padding: 24px 16px 48px;
-  background: var(--fm-bg);
+  padding: 28px 16px 48px;
+  background:
+    radial-gradient(110% 60% at 100% 0%, #0f2560 0%, rgb(7 10 15 / 0) 60%),
+    radial-gradient(90% 50% at 0% 100%, #0d2c16 0%, rgb(7 10 15 / 0) 62%),
+    var(--fm-bg);
   color: var(--fm-text);
   font-family: var(--fm-font-body);
   font-size: 16px;
@@ -102,38 +144,93 @@ body {
   margin: 0 auto;
 }
 
+/* The floodlights: two soft pools of the ball's own blue and green. */
+.flood {
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+.flood--a {
+  width: 460px;
+  height: 460px;
+  right: -160px;
+  top: -200px;
+  background: #1f5cff;
+  opacity: 0.42;
+}
+
+.flood--b {
+  width: 380px;
+  height: 380px;
+  left: -180px;
+  bottom: -220px;
+  background: #2f9e3a;
+  opacity: 0.28;
+}
+
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
+  gap: 12px;
+  margin: 0 4px 22px;
 }
 
-.brand__mark {
-  width: 32px;
-  height: 32px;
+.brand__icon {
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
-  border-radius: 9px;
-  background: var(--fm-blue);
-  color: #fff;
+  filter: drop-shadow(0 6px 18px rgb(31 92 255 / 0.35));
+}
+
+.brand__lockup {
   display: grid;
-  place-items: center;
-  font-size: 18px;
+  line-height: 1.1;
+}
+
+.brand__word {
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: -0.015em;
+  color: var(--fm-text);
+}
+
+.brand__word span {
+  color: var(--fm-accent-2);
+}
+
+.brand__tagline {
+  margin-top: 3px;
+  color: var(--fm-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .card {
+  position: relative;
+  overflow: hidden;
   background: var(--fm-surface);
   border: 1px solid var(--fm-line);
   border-radius: var(--fm-radius-lg);
   box-shadow: var(--fm-shadow);
-  padding: 24px 20px;
+  padding: 28px 22px 24px;
+}
+
+/* The ball's two colours across the top of the card, like a club's sash. */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--fm-blue) 0%, #2b6bff 45%, var(--fm-green) 100%);
 }
 
 h1 {
   margin: 0 0 6px;
-  font-size: 1.4rem;
+  font-size: 1.45rem;
   line-height: 1.25;
   font-weight: 900;
   letter-spacing: -0.015em;
@@ -169,10 +266,11 @@ input[type='date'] {
   min-height: 46px;
   padding: 10px 12px;
   color: var(--fm-text);
-  background: var(--fm-bg);
+  background: var(--fm-field);
   border: 1px solid var(--fm-line-strong);
   border-radius: var(--fm-radius-sm);
   font: inherit;
+  color-scheme: dark;
   transition: border-color var(--fm-fast) var(--fm-ease),
     box-shadow var(--fm-fast) var(--fm-ease);
 }
@@ -190,23 +288,26 @@ summary:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* 46px, so the primary action is a comfortable target on a phone. */
-  min-height: 46px;
+  /* 48px, so the primary action is a comfortable target on a phone. */
+  min-height: 48px;
   width: 100%;
-  padding: 10px 18px;
+  padding: 12px 20px;
   border: 1px solid transparent;
-  border-radius: var(--fm-radius);
-  background: var(--fm-accent);
-  color: var(--fm-accent-text);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2b6bff 0%, #0444c8 55%, #032f8c 100%);
+  box-shadow: 0 12px 28px -12px rgb(43 107 255 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.22);
+  color: #fff;
   font: inherit;
-  font-weight: 700;
+  font-weight: 900;
+  letter-spacing: 0.01em;
   cursor: pointer;
   transition: transform var(--fm-fast) var(--fm-ease),
-    filter var(--fm-fast) var(--fm-ease);
+    box-shadow var(--fm-fast) var(--fm-ease), filter var(--fm-fast) var(--fm-ease);
 }
 
 .btn:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.08);
+  box-shadow: 0 16px 34px -12px rgb(43 107 255 / 0.95), inset 0 1px 0 rgb(255 255 255 / 0.28);
 }
 
 .btn:active {
@@ -215,12 +316,15 @@ summary:focus-visible {
 
 .btn--quiet {
   background: transparent;
+  box-shadow: none;
   color: var(--fm-text-muted);
   border-color: var(--fm-line-strong);
+  font-weight: 700;
 }
 
 .btn--danger {
   background: transparent;
+  box-shadow: none;
   color: var(--fm-red);
   border-color: var(--fm-red);
   width: auto;
@@ -374,26 +478,34 @@ a {
 
 .tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 22px;
+  border: 1px solid var(--fm-line);
+  border-radius: 999px;
+  background: var(--fm-field);
 }
 
 .tab {
   flex: 1 1 0;
   text-align: center;
-  padding: 10px;
-  border: 1px solid var(--fm-line-strong);
-  border-radius: var(--fm-radius-sm);
+  padding: 9px 10px;
+  border-radius: 999px;
   text-decoration: none;
   color: var(--fm-text-muted);
   font-weight: 700;
   font-size: 0.92rem;
+  transition: color var(--fm-fast) var(--fm-ease), background var(--fm-fast) var(--fm-ease);
+}
+
+.tab:hover {
+  color: var(--fm-text);
 }
 
 .tab[aria-current='page'] {
-  background: var(--fm-blue-soft);
-  border-color: var(--fm-accent);
-  color: var(--fm-accent);
+  background: var(--fm-blue);
+  color: #fff;
+  box-shadow: 0 6px 16px -8px rgb(43 107 255 / 0.9);
 }
 
 @media (prefers-reduced-motion: reduce) {

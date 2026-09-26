@@ -1,13 +1,17 @@
 {#
   The shell every OAuth page shares.
 
-  Three things it does deliberately:
+  Four things it does deliberately:
 
   * `lang="en-GB"`, `viewport`, one `<h1>` per page and a skip-free single-column
     layout — this is a form that takes a password, so it is the least
     experimental page in the product.
   * `robots: noindex, nofollow`. A consent screen is not content; a search engine
     holding one is a URL with a live flow token in it.
+  * Fanmoot's own brand: the ball-and-podium icon, the Lato wordmark and the
+    Floodlit colours, as `mcp.fanmoot.com`'s home page and fanmoot.com set them.
+    A fan who is asked for a password in a popup should recognise whose page
+    it is before they read a word of it.
   * No script. Nothing on these pages needs JavaScript, and a page that takes a
     credential is the last place to add a dependency that can fail or be
     injected. `referrer` is stripped in the meta as well as the header, because a
@@ -20,17 +24,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta name="color-scheme" content="dark light">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070a0f">
 <title>{% block title %}Fanmoot{% endblock %}</title>
-<link rel="icon" href="/static/icons/thread.svg" type="image/svg+xml">
+<link rel="icon" href="/static/brand/icon-64x64.png" type="image/png">
+<link rel="apple-touch-icon" href="/static/brand/icon-180x180.png">
+<link rel="preload" href="/static/fonts/lato-900.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/oauth.css?v={{ version }}">
 </head>
-<body>
+<body class="oauth">
+<span class="flood flood--a" aria-hidden="true"></span>
+<span class="flood flood--b" aria-hidden="true"></span>
 <div class="shell">
-  <div class="brand">
-    <span class="brand__mark" aria-hidden="true">F</span>
-    <span>Fanmoot</span>
-  </div>
+  <header class="brand">
+    <img class="brand__icon" src="/static/brand/icon-126x126.png" alt="" width="44" height="44">
+    <span class="brand__lockup">
+      <span class="brand__word">Fan<span>moot</span></span>
+      <span class="brand__tagline">Where fans debate football</span>
+    </span>
+  </header>
 
   <main class="card">
     {% block body %}{% endblock %}

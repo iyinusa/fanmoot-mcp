@@ -118,7 +118,7 @@ async def test_not_you_forgets_the_session_and_keeps_the_request(
         "/oauth/switch", params={"flow_token": oauth.flow_token(consent.text)}
     )
 
-    assert "Connect Fanmoot to Alexa+" in switched.text
+    assert "Sign in to Fanmoot" in switched.text and "Alexa+" in switched.text
     # The request survives: signing in again lands back on consent, not on an
     # expired flow.
     back = await oauth.sign_in(oauth_http, switched)

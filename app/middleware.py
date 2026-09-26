@@ -118,9 +118,10 @@ _ALWAYS = (
     (b"referrer-policy", b"no-referrer"),
 )
 
-#: On HTML only — the sign-in, sign-up, consent, connected-apps and legal pages.
-#: Every one of them is script-free and draws only its own stylesheet and icon,
-#: so the policy can say exactly that. `frame-ancestors 'none'` is the one that
+#: On HTML only — the landing, sign-in, sign-up, consent, connected-apps and
+#: legal pages. Every one of them is script-free and draws only its own
+#: stylesheets, icons and (on the landing page) self-hosted Lato, so the policy
+#: can say exactly that. `frame-ancestors 'none'` is the one that
 #: matters most: a consent screen somebody else can frame is a consent screen
 #: somebody else can trick a fan into clicking.
 #:
@@ -130,7 +131,7 @@ _ALWAYS = (
 #: `form-action 'self'` would break every account link in the one browser most
 #: fans use.
 _HTML_CSP = (
-    b"default-src 'none'; style-src 'self'; img-src 'self' data:; "
+    b"default-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; "
     b"base-uri 'none'; frame-ancestors 'none'"
 )
 _HTML_ONLY = (

@@ -1,0 +1,91 @@
+{# The text of `/privacy`, shared by the page itself and the modal on the
+   landing page (`home.html`), so the two can never say different things.
+   Needs the context `app.legal.context()` builds. #}
+<p class="lede">What <strong>{{ public_base_url }}</strong> keeps when you connect
+an app or an assistant to your Fanmoot account, and how to take it back.
+Last updated {{ updated }}.</p>
+
+<p>This service connects apps and assistants to Fanmoot, such as Alexa, Claude,
+ChatGPT and Cursor. It is not where your Fanmoot account lives. Your profile, your
+posts and your settings are held by fanmoot.com and covered by its own privacy
+policy. This page is about the service in between.</p>
+
+<h2>If you never connect an account</h2>
+<p>Scores, fixtures and match conversations need no sign-in. For each question
+an app asks, this service records which tool answered, how long it took, whether
+it worked and when. It does not record what was asked or what was answered.
+Your address is held in memory for up to an hour to enforce rate limits, and is
+never written down.</p>
+
+<h2>When you sign in or sign up</h2>
+<ul>
+  <li><strong>Your email address and password</strong> are passed to fanmoot.com
+    once, to sign you in, and are <strong>never stored here</strong>.</li>
+  <li><strong>A new account</strong>, if you create one here, is created by
+    fanmoot.com. Nothing you type on the sign-up form is kept by this service.</li>
+  <li><strong>A sign-in cookie</strong> on this site only, lasting
+    {{ session_minutes }} minutes, so you can finish connecting without signing
+    in twice. It is not used for anything else.</li>
+</ul>
+
+<h2>What is kept while an app is connected</h2>
+<ul>
+  <li>Your Fanmoot <strong>user id and handle</strong>, to show you your connected
+    apps. Not your email address or your name.</li>
+  <li>A <strong>Fanmoot session token</strong>, encrypted, so the app can act for
+    you without asking for your password again. It is only ever decrypted to
+    make a request you asked for.</li>
+  <li>The <strong>permissions you ticked</strong> for each app, and the app's
+    own tokens. The tokens are stored as one-way hashes, so they cannot be read
+    back even here. An app's access token lasts {{ access_hours }} hour{{ "s" if access_hours != 1 }}
+    and its refresh token {{ refresh_days }} days.</li>
+  <li>A <strong>record of each decision</strong> you make about an app, such as
+    allowing, declining, adding a permission or disconnecting. Each one is kept
+    with the time, your address and your browser's name, because "did I really
+    allow this?" is a question worth being able to answer.</li>
+  <li>The same <strong>tool record</strong> as above, marked with which
+    connection made the call. Still no content.</li>
+</ul>
+
+<h2>What you post</h2>
+<p>A take, reply, reaction, prediction or follow is sent to fanmoot.com as you,
+and fanmoot.com keeps it. This service does not keep a copy. To stop a
+double post it keeps a one-way fingerprint of the request for as long as
+fanmoot.com needs it, and that fingerprint cannot be turned back into your
+words.</p>
+
+<h2>Match mood</h2>
+<p>To say how a match thread feels, this service samples its <strong>public</strong>
+takes{% if mood_uses_bedrock %} and sends their text to Amazon Bedrock to be labelled
+positive, negative or neutral{% else %} and labels them with a word list{% endif %}.
+Only the words are used. No handle, name or id goes with them, subscriber-only
+takes are never included, and the labels are counted and then discarded.</p>
+
+<h2>How long things are kept</h2>
+<ul>
+  <li>Tool records: {{ tool_call_days }} days.</li>
+  <li>Records of your decisions about apps: {{ consent_days }} days.</li>
+  <li>Your encrypted Fanmoot session token: until no app is connected with it
+    or fanmoot.com ends the session. Then it is deleted and fanmoot.com is told
+    to end it. That happens within a day of the last app being disconnected,
+    and within a day of a sign-in that did not end in connecting anything.</li>
+  <li>An app that registered itself and was never connected to anyone:
+    {{ dcr_days }} days.</li>
+</ul>
+
+<h2>Disconnecting</h2>
+<p>Go to <a href="/oauth/connected">connected apps</a> to see every app linked to
+your account and disconnect any of them. The app's tokens stop working at once.
+When no connected app is left using your Fanmoot session, the session token is
+deleted and fanmoot.com is told to end it, as above. Signing out of fanmoot.com
+everywhere also stops every app connected here from acting as you. To delete your Fanmoot account itself, use fanmoot.com.</p>
+
+<h2>Who else sees it</h2>
+<p>Nobody is sold anything. Your data goes to fanmoot.com, which is the point of
+the service. Public take text goes to Amazon Bedrock as described above. The
+servers this runs on keep ordinary network logs. An app you connect sees what its
+permissions allow and nothing else. Each app has its own privacy policy, and
+Fanmoot has not vetted the apps that register themselves.</p>
+
+<h2>Questions</h2>
+<p>Write to <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</p>

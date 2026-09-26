@@ -1,0 +1,351 @@
+{#
+  `GET /` — the front door (`app.home`).
+
+  Built in the language of fanmoot.com's own landing page (`landing.html` and
+  `_landing.css` in the fanmoot repo): always dark, Floodlit at full volume, a
+  pitch drawn behind the hero, the wordmark as fanmoot.com sets it. A fan who
+  arrives here from a connector list should know at a glance whose server it is.
+
+  Its own document rather than an extension of `base.html`: the OAuth shell is
+  a single narrow card built to take a password. It keeps that shell's rules
+  all the same — no script, no inline style (the policy in `app.middleware`
+  forbids both), same-origin stylesheet, icons and fonts only. Everything that
+  moves is CSS and stops under `prefers-reduced-motion`.
+
+  The assistant on the right is not a screenshot. It is drawn in HTML from the
+  same colours as the views the server really renders (`app/mcp/apps`).
+
+  Privacy and terms are popovers: the `popover` attribute and `popovertarget`
+  open and close them — Escape and a click outside included — with no script.
+#}<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070a0f">
+<meta name="description" content="{{ description }}">
+<title>Fanmoot MCP — football, argued, in any assistant</title>
+<link rel="icon" href="/static/brand/icon-64x64.png" type="image/png">
+<link rel="apple-touch-icon" href="/static/brand/icon-180x180.png">
+<link rel="preload" href="/static/fonts/lato-900.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/home.css?v={{ version }}">
+</head>
+<body class="home">
+
+<header class="top">
+  <a class="brand" href="/" aria-label="Fanmoot MCP, home">
+    <img src="/static/brand/icon-64x64.png" alt="" width="30" height="30">
+    <span class="brand__word">Fan<span>moot</span></span>
+    <span class="brand__tag">MCP</span>
+  </a>
+  <nav class="top__nav" aria-label="On this page">
+    <a href="#tools">Tools</a>
+    <a href="#connect">Connect</a>
+    <a href="#developers">Developers</a>
+  </nav>
+  <div class="top__end">
+    <a class="top__link" href="https://fanmoot.com">fanmoot.com</a>
+    <a class="btn btn--sm" href="#connect">Connect</a>
+  </div>
+</header>
+
+<main>
+  {# ── Hero ──────────────────────────────────────────────────────────── #}
+  <section class="hero">
+    <span class="glow glow--a" aria-hidden="true"></span>
+    <span class="glow glow--b" aria-hidden="true"></span>
+    <span class="beam beam--l" aria-hidden="true"></span>
+    <span class="beam beam--r" aria-hidden="true"></span>
+    <svg class="pitch" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="#fff" stroke-width="2">
+        <rect pathLength="1" x="40" y="40" width="1120" height="620" rx="4"/>
+        <line pathLength="1" x1="600" y1="40" x2="600" y2="660"/>
+        <circle pathLength="1" cx="600" cy="350" r="92"/>
+        <rect pathLength="1" x="40" y="200" width="160" height="300"/>
+        <rect pathLength="1" x="1000" y="200" width="160" height="300"/>
+        <rect pathLength="1" x="40" y="282" width="56" height="136"/>
+        <rect pathLength="1" x="1104" y="282" width="56" height="136"/>
+      </g>
+    </svg>
+
+    <div class="hero__inner">
+      <div class="hero__copy">
+        <p class="eyebrow rise r1"><span class="dot" aria-hidden="true"></span>Live · Model Context Protocol {{ protocol_version }}</p>
+        <h1 class="title rise r2">Football, argued. <span>In any assistant.</span></h1>
+        <p class="sub rise r3">{{ description }} Ask about any match, hear what the
+          terraces think, and post your own take — from Claude, ChatGPT, Cursor,
+          VS Code or Alexa+.</p>
+
+        <div class="endpoint rise r4">
+          <span class="endpoint__label">Server URL</span>
+          <code class="endpoint__url">{{ mcp_url }}</code>
+        </div>
+        <p class="endpoint__hint rise r4">No key, no client id. Sign in only when you want to post.</p>
+
+        <div class="ctas rise r5">
+          <a class="btn" href="#connect">Connect a client <span aria-hidden="true">→</span></a>
+          <a class="btn btn--ghost" href="#tools">See what it can do</a>
+        </div>
+
+        <ul class="stats rise r6">
+          <li><strong>{{ read_tools | length }}</strong><span>open tools</span></li>
+          <li><strong>{{ fan_tools | length }}</strong><span>fan tools</span></li>
+          <li><strong>{{ views | length }}</strong><span>live cards</span></li>
+          <li><strong>0</strong><span>keys needed</span></li>
+        </ul>
+      </div>
+
+      <div class="stage" role="img" aria-label="An assistant connected to Fanmoot: a fan asks for the Arsenal score and hears it read aloud with a live scoreboard, asks for the mood and sees the split, then asks the assistant to post a take, which needs a sign-in.">
+        <div class="device">
+          <div class="device__bar">
+            <span class="device__lights"><i></i><i></i><i></i></span>
+            <span class="device__title">Your assistant</span>
+            <span class="device__conn"><i></i>fanmoot</span>
+          </div>
+          {# Each step is wrapped so it can grow from nothing: the chat is
+             pinned to its bottom edge, so a step arriving pushes the earlier
+             ones up and out of the top, the way a real conversation scrolls. #}
+          <div class="chat">
+            <div class="step s1"><p class="msg msg--fan">What's the score in the Arsenal game?</p></div>
+            <div class="step s2"><p class="tcall"><span class="tcall__bolt"></span><code>live_scores</code></p></div>
+            <div class="step s3"><div class="mini-score">
+              <span class="mini-score__min"><i></i>67'</span>
+              <span class="mini-score__team"><span class="crest crest--ars">A</span>ARS</span>
+              <span class="mini-score__score"><span class="roll"><span>1</span><span>2</span></span><i>–</i>1</span>
+              <span class="mini-score__team mini-score__away">TOT<span class="crest crest--tot">T</span></span>
+              <span class="goal">Goal!</span>
+            </div></div>
+            <div class="step s4"><p class="msg msg--ai">Arsenal are two-one up at the Emirates, sixty-seventh minute.</p></div>
+            <div class="step s5"><p class="msg msg--fan">How are the fans taking it?</p></div>
+            <div class="step s6"><p class="tcall"><span class="tcall__bolt"></span><code>match_mood</code></p></div>
+            <div class="step s7"><div class="mini-mood">
+              <span class="mini-mood__bar"><i class="pos"></i><i class="neg"></i><i class="neu"></i></span>
+              <span class="mini-mood__key"><b class="pos">62% buzzing</b><b class="neg">23% fuming</b><b class="neu">15% meh</b></span>
+            </div></div>
+            <div class="step s8"><p class="msg msg--ai">Mostly buzzing — though plenty reckon the second goal was offside.</p></div>
+            <div class="step s9"><p class="msg msg--fan">Post that it was never offside.</p></div>
+            <div class="step s10"><p class="tcall"><span class="tcall__bolt"></span><code>post_moot</code><span class="tcall__lock">sign-in</span></p></div>
+            <div class="step s11"><p class="msg msg--ai msg--typing"><i></i><i></i><i></i></p></div>
+          </div>
+          <div class="device__input"><span>Ask about any match…</span><span class="mic"></span></div>
+        </div>
+
+        <div class="float float--a" aria-hidden="true"><span class="float__icon">🔐</span>OAuth 2.1 · PKCE</div>
+        <div class="float float--b" aria-hidden="true"><span class="float__icon">🎙️</span>Answers out loud</div>
+        <div class="float float--c" aria-hidden="true"><span class="float__icon">⚡</span>Streamable HTTP</div>
+      </div>
+    </div>
+  </section>
+
+  {# ── The ticker: what fans say, and the tool that answers ────────────── #}
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker__track">
+      {% for _round in range(2) %}{% for ask, tool in asks %}
+      <span class="tick"><span class="tick__ask">“{{ ask }}”</span><span class="tick__arrow">→</span><code>{{ tool }}</code></span>
+      {% endfor %}{% endfor %}
+    </div>
+  </div>
+
+  {# ── Tools ─────────────────────────────────────────────────────────── #}
+  <section id="tools" class="section">
+    <p class="kicker">What it can do</p>
+    <h2 class="h2">Ask like a fan. <span class="h2__muted">Hear it like a pundit.</span></h2>
+    <p class="lede">Every answer comes back twice: as data for the machine, and as a
+      sentence an assistant can read aloud unedited. Clubs and matches are named the
+      way fans say them — “the gunners”, “the Brighton game” — never by id.</p>
+
+    <h3 class="group">Ask anything <span class="chip chip--lime">no sign-in</span></h3>
+    <ul class="cards cards--tools">
+      {% for tool in read_tools %}
+      <li class="card tool reveal">
+        <span class="tool__icon">{{ tool.icon | safe }}</span>
+        <div class="tool__text">
+          <p class="tool__title">{{ tool.title }}</p>
+          <p class="tool__summary">{{ tool.summary }}</p>
+          <code class="tool__name">{{ tool.name }}</code>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <h3 class="group">Act as you <span class="chip chip--amber">signed-in fan</span></h3>
+    <ul class="cards cards--tools">
+      {% for tool in fan_tools %}
+      <li class="card tool tool--fan reveal">
+        <span class="tool__icon">{{ tool.icon | safe }}</span>
+        <div class="tool__text">
+          <p class="tool__title">{{ tool.title }}</p>
+          <p class="tool__summary">{{ tool.summary }}</p>
+          <code class="tool__name">{{ tool.name }}</code> <code class="tool__scope">{{ tool.scope }}</code>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <h3 class="group">Cards it draws <span class="chip chip--blue">MCP Apps</span></h3>
+    <ul class="cards cards--views">
+      {% for view in views %}
+      <li class="card view reveal">
+        <div class="view__demo" aria-hidden="true">
+          {% if view.name == "scoreboard" %}
+          <div class="vd-score"><span class="vd-live"><i></i>Live · 67'</span><strong>2<i>–</i>1</strong><span class="vd-teams"><span class="crest crest--ars">A</span><span class="crest crest--tot">T</span></span></div>
+          {% elif view.name == "thread" %}
+          <div class="vd-thread"><span class="vd-line"><i class="av av--a"></i><b></b></span><span class="vd-line vd-line--reply"><i class="av av--b"></i><b></b></span><span class="vd-compose">Reply…<em>Moot</em></span></div>
+          {% elif view.name == "fixtures" %}
+          <div class="vd-fix"><span><b>Sat</b><i></i>15:00</span><span><b>Sat</b><i></i>17:30</span><span><b>Sun</b><i></i>16:30</span></div>
+          {% elif view.name == "mood" %}
+          <div class="vd-mood"><span class="mini-mood__bar"><i class="pos"></i><i class="neg"></i><i class="neu"></i></span><span class="vd-mood__n"><b>62</b><b>23</b><b>15</b></span></div>
+          {% endif %}
+        </div>
+        <p class="tool__title">{{ view.title }}</p>
+        <p class="tool__summary">{{ view.description }}</p>
+        <code class="tool__name">{{ view.uri }}</code>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {# ── Connect ───────────────────────────────────────────────────────── #}
+  <section id="connect" class="section">
+    <p class="kicker">Sixty seconds</p>
+    <h2 class="h2">One URL. <span class="h2__muted">Every client.</span></h2>
+    <p class="lede">Each client registers itself the first time it needs a fan, then
+      sends you through a Fanmoot sign-in — or sign-up — right here.</p>
+
+    <div class="clients">
+      <details class="client reveal" open>
+        <summary><span class="client__n">01</span>Claude Code</summary>
+        <pre><code>claude mcp add --transport http fanmoot {{ mcp_url }}</code></pre>
+      </details>
+      <details class="client reveal">
+        <summary><span class="client__n">02</span>Claude — desktop and web</summary>
+        <p><strong>Settings → Connectors → Add custom connector</strong>, and paste the
+          server URL. For a desktop app that only runs local servers, bridge it in
+          <code>claude_desktop_config.json</code>:</p>
+        <pre><code>{ "mcpServers": { "fanmoot": { "command": "npx", "args": ["-y", "mcp-remote", "{{ mcp_url }}"] } } }</code></pre>
+      </details>
+      <details class="client reveal">
+        <summary><span class="client__n">03</span>ChatGPT</summary>
+        <p>With developer mode on (<strong>Settings → Apps &amp; Connectors →
+          Advanced</strong>), create a connector with the server URL and OAuth
+          authentication. ChatGPT registers itself and finds the sign-in from the
+          server's challenge.</p>
+      </details>
+      <details class="client reveal">
+        <summary><span class="client__n">04</span>Cursor</summary>
+        <p><code>~/.cursor/mcp.json</code>, or <code>.cursor/mcp.json</code> in a project:</p>
+        <pre><code>{ "mcpServers": { "fanmoot": { "url": "{{ mcp_url }}" } } }</code></pre>
+      </details>
+      <details class="client reveal">
+        <summary><span class="client__n">05</span>VS Code</summary>
+        <p><code>.vscode/mcp.json</code>:</p>
+        <pre><code>{ "servers": { "fanmoot": { "type": "http", "url": "{{ mcp_url }}" } } }</code></pre>
+      </details>
+      <details class="client reveal">
+        <summary><span class="client__n">06</span>MCP Inspector</summary>
+        <pre><code>npx @modelcontextprotocol/inspector --transport http --server-url {{ mcp_url }}</code></pre>
+      </details>
+      <details class="client reveal">
+        <summary><span class="client__n">07</span>Any stdio-only client</summary>
+        <p><code>mcp-remote</code> turns this server into a local stdio one, OAuth included:</p>
+        <pre><code>npx -y mcp-remote {{ mcp_url }}</code></pre>
+      </details>
+    </div>
+  </section>
+
+  {# ── Developers ────────────────────────────────────────────────────── #}
+  <section id="developers" class="section">
+    <p class="kicker">For developers</p>
+    <h2 class="h2">Built to the spec. <span class="h2__muted">Safe by default.</span></h2>
+    <p class="lede">An MCP server with its own OAuth 2.1 authorization server. What a
+      client holds is never a Fanmoot token — it is a revocable handle that expires
+      in {{ access_hours }} hour{{ "s" if access_hours != 1 }} and means nothing to fanmoot.com.</p>
+
+    <div class="dev">
+      <div class="reveal">
+        <h3 class="group group--first">Discovery</h3>
+        <ul class="panel links">
+          <li><a href="/.well-known/oauth-protected-resource"><code>/.well-known/oauth-protected-resource</code></a><span>RFC 9728</span></li>
+          <li><a href="/.well-known/oauth-authorization-server"><code>/.well-known/oauth-authorization-server</code></a><span>RFC 8414</span></li>
+          <li><a href="/.well-known/openid-configuration"><code>/.well-known/openid-configuration</code></a><span>OIDC</span></li>
+        </ul>
+        <p class="fine">Public by design: a client reads these before it holds any
+          token. They list endpoints and capabilities — never a key, a secret or a
+          fan's data.</p>
+        <ul class="facts">
+          <li>Authorization code + PKCE, S256 only</li>
+          <li>Rotating refresh tokens, stored as hashes</li>
+          <li>Self-registration: RFC 7591 and client metadata documents</li>
+          <li>Origin checked on every <code>/mcp</code> request</li>
+        </ul>
+      </div>
+
+      <div class="reveal">
+        <h3 class="group group--first">Scopes a fan can grant</h3>
+        <ul class="panel scopes-list">
+          {% for scope in scopes %}
+          <li>
+            <code>{{ scope.name }}</code>
+            <p class="tool__title">{{ scope.summary }}</p>
+            <p class="tool__summary">{{ scope.detail }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+        <p class="fine">Any of them can be unticked on the consent screen, and any
+          app cut off from <a href="/oauth/connected">connected apps</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  {# ── The close ─────────────────────────────────────────────────────── #}
+  <section class="final">
+    <span class="glow glow--c" aria-hidden="true"></span>
+    <h2>Put the terraces in your assistant.</h2>
+    <p>One URL, no key. Ask about the football tonight — and when you have a take,
+      post it under your own name.</p>
+    <div class="endpoint endpoint--final">
+      <span class="endpoint__label">Server URL</span>
+      <code class="endpoint__url">{{ mcp_url }}</code>
+    </div>
+    <div class="ctas ctas--center">
+      <a class="btn btn--green" href="#connect">Connect a client <span aria-hidden="true">→</span></a>
+      <a class="btn btn--ghost" href="https://fanmoot.com">Visit fanmoot.com</a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <a class="brand brand--foot" href="https://fanmoot.com">
+    <img src="/static/brand/icon-64x64.png" alt="" width="24" height="24">
+    <span class="brand__word">Fan<span>moot</span></span>
+  </a>
+  <p class="foot__links">
+    <button type="button" class="linkish" popovertarget="privacy">Privacy</button>
+    <button type="button" class="linkish" popovertarget="terms">Terms</button>
+    <a href="/oauth/connected">Connected apps</a>
+    <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+  </p>
+  <p class="foot__small">&copy; {{ year }} Fanmoot · Football conversation, one club at a time · v{{ version }}</p>
+</footer>
+
+{# ── Legal, as modals ──────────────────────────────────────────────────── #}
+<div id="privacy" class="modal" popover role="dialog" aria-labelledby="privacy-title">
+  <div class="modal__head">
+    <h2 id="privacy-title" class="modal__title">Privacy</h2>
+    <button type="button" class="modal__close" popovertarget="privacy" popovertargetaction="hide" aria-label="Close privacy">×</button>
+  </div>
+  <div class="modal__body legal">{% include "_privacy_body.html" %}</div>
+</div>
+
+<div id="terms" class="modal" popover role="dialog" aria-labelledby="terms-title">
+  <div class="modal__head">
+    <h2 id="terms-title" class="modal__title">Terms</h2>
+    <button type="button" class="modal__close" popovertarget="terms" popovertargetaction="hide" aria-label="Close terms">×</button>
+  </div>
+  <div class="modal__body legal">{% include "_terms_body.html" %}</div>
+</div>
+
+</body>
+</html>

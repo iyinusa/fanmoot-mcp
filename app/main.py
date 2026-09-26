@@ -28,7 +28,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app import __version__, audit, health, legal, mood, registry, warm
+from app import __version__, audit, health, home, legal, mood, registry, warm
 from app.db import dispose_engine, get_sessionmaker
 from app.fanmoot import cache as fanmoot_cache
 from app.fanmoot import names as fanmoot_names
@@ -151,6 +151,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # demo's trace panel line up with this server's logs (HAD-12).
     app.add_middleware(RequestIdMiddleware)
 
+    app.include_router(home.router)
     app.include_router(health.router)
     app.include_router(legal.router)
     app.include_router(registry.router)

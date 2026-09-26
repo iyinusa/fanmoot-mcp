@@ -35,7 +35,8 @@ UPDATED = "23 September 2026"
 _HEADERS = {"Cache-Control": "public, max-age=3600"}
 
 
-def _context() -> dict[str, object]:
+def context() -> dict[str, object]:
+    """What the legal text needs. Public because `/` renders it in a modal too."""
     settings = get_settings()
     return {
         "version": __version__,
@@ -54,9 +55,9 @@ def _context() -> dict[str, object]:
 
 @router.get("/privacy", include_in_schema=False)
 async def privacy(request: Request) -> Response:
-    return templates.TemplateResponse(request, "privacy.html", _context(), headers=_HEADERS)
+    return templates.TemplateResponse(request, "privacy.html", context(), headers=_HEADERS)
 
 
 @router.get("/terms", include_in_schema=False)
 async def terms(request: Request) -> Response:
-    return templates.TemplateResponse(request, "terms.html", _context(), headers=_HEADERS)
+    return templates.TemplateResponse(request, "terms.html", context(), headers=_HEADERS)

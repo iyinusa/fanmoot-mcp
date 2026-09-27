@@ -313,7 +313,7 @@ def test_each_take_has_its_own_reply_button(rendered: Any) -> None:
         TrendingAnswer(spoken="x", takes=[first, second], count=2),
         acts=[
             {"click": "reply:second2"},
-            {"submit": "composer", "field": "reply", "text": "Spot on, Jo."},
+            {"submit": "send", "field": "reply", "text": "Spot on, Jo."},
         ],
         toolResult={"structuredContent": {"held": False}, "content": []},
     )
@@ -330,7 +330,7 @@ def test_a_posted_reply_appears_on_the_card_straight_away(rendered: Any) -> None
     result = rendered(
         "thread",
         thread_payload(take("Saka was the only one who turned up.")),
-        act={"submit": "composer", "field": "reply", "text": "Rubbish, he was superb."},
+        act={"submit": "send", "field": "reply", "text": "Rubbish, he was superb."},
         toolResult={
             "structuredContent": {"held": False, "take": reply.model_dump(mode="json")},
             "content": [],
@@ -559,7 +559,7 @@ def test_an_open_fixture_is_called_from_the_card(rendered: Any) -> None:
         acts=[
             {
                 "fill": {f"home:{MATCH_ID}": "2", f"away:{MATCH_ID}": "1"},
-                "send": f"predict:{MATCH_ID}",
+                "click": f"predict:{MATCH_ID}",
             }
         ],
         toolResult={
@@ -584,7 +584,7 @@ def test_a_nonsense_score_is_caught_before_it_is_sent(rendered: Any) -> None:
         acts=[
             {
                 "fill": {f"home:{MATCH_ID}": "12", f"away:{MATCH_ID}": "1"},
-                "send": f"predict:{MATCH_ID}",
+                "click": f"predict:{MATCH_ID}",
             }
         ],
     )
@@ -601,7 +601,7 @@ def test_a_call_that_was_refused_is_not_shown_as_made(rendered: Any) -> None:
         acts=[
             {
                 "fill": {f"home:{MATCH_ID}": "2", f"away:{MATCH_ID}": "1"},
-                "send": f"predict:{MATCH_ID}",
+                "click": f"predict:{MATCH_ID}",
             }
         ],
         toolResult={"isError": True, "content": [{"type": "text", "text": sentence}]},

@@ -255,8 +255,20 @@ def test_the_thread_view_has_a_composer_a_person_can_use() -> None:
     parsed = _Parsed(views.document("thread"))
 
     assert parsed.has_tag("textarea")
-    assert parsed.has_tag("form")
-    assert any(tag.get("type") == "submit" for tag in parsed.tags_named("button"))
+    assert any(tag.get("id") == "send" for tag in parsed.tags_named("button"))
+
+
+@pytest.mark.parametrize("name", [view.name for view in views.VIEWS])
+def test_no_view_acts_on_a_form_submission(name: str) -> None:
+    """A host sandbox without ``allow-forms`` — Claude's — drops a form
+    submission before the ``submit`` event fires. A Reply or Call it button
+    wired to that event does nothing in the host, silently; every action here
+    is a button's ``click`` instead."""
+    html = views.document(name)
+
+    assert "addEventListener('submit'" not in html, name
+    assert 'type="submit"' not in html, name
+    assert "type = 'submit'" not in html, name
 
 
 def test_no_view_writes_a_moot_into_markup() -> None:
@@ -447,3 +459,12 @@ def test_the_parser_reads_what_a_browser_would() -> None:
     assert parsed.has_tag("html")
     assert len(parsed.scripts) >= 2
     assert json.dumps(parsed.tags_named("textarea"))  # serialisable, non-empty
+
+
+def test_hidden_means_hidden_whatever_a_class_says() -> None:
+    """``.avatar`` sets ``display: grid``, which beats the browser's own
+    ``[hidden]`` default — so a hidden fallback initial was drawn as a second
+    avatar under a photo that had loaded. The base stylesheet settles it."""
+    css = (views.ASSETS / "base.css").read_text()
+
+    assert re.search(r"\[hidden\]\s*\{\s*display:\s*none\s*!important;", css)

@@ -330,7 +330,7 @@ def test_the_composer_posts_through_the_host(rendered: Any) -> None:
     result = rendered(
         "thread",
         thread_payload(take("Saka was the only one who turned up.")),
-        act={"submit": "composer", "field": "reply", "text": "Rubbish, he was superb."},
+        act={"submit": "send", "field": "reply", "text": "Rubbish, he was superb."},
         toolResult={"structuredContent": {"held": False}, "content": []},
     )
 
@@ -349,7 +349,7 @@ def test_a_held_reply_is_not_reported_as_posted(rendered: Any) -> None:
     result = rendered(
         "thread",
         thread_payload(take("Saka was the only one who turned up.")),
-        act={"submit": "composer", "field": "reply", "text": "Off topic entirely."},
+        act={"submit": "send", "field": "reply", "text": "Off topic entirely."},
         toolResult={"structuredContent": {"held": True, "gate_reason": reason}, "content": []},
     )
 
@@ -363,7 +363,7 @@ def test_a_refused_reply_says_the_tools_own_sentence(rendered: Any) -> None:
     result = rendered(
         "thread",
         thread_payload(take("Saka was the only one who turned up.")),
-        act={"submit": "composer", "field": "reply", "text": "Rubbish."},
+        act={"submit": "send", "field": "reply", "text": "Rubbish."},
         toolResult={"isError": True, "content": [{"type": "text", "text": sentence}]},
     )
 

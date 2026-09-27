@@ -122,8 +122,7 @@
          *  schema (0 to 9), so a slip is a sentence under the row rather than
          *  a round trip that fails. */
         function callForm(row, holder, view) {
-          var form = el('form', 'call');
-          form.setAttribute('data-act', 'predict:' + row.match_id);
+          var form = el('div', 'call');
           var status = el('p', 'card-status');
           status.setAttribute('role', 'status');
           status.setAttribute('aria-live', 'polite');
@@ -144,14 +143,17 @@
           var home = box('home', row.home, row.home_score);
           var away = box('away', row.away, row.away_score);
           var send = el('button', null, row.called ? 'Change my call' : 'Call it');
-          send.type = 'submit';
+          // A click, not a form submission: a host sandbox without
+          // `allow-forms` drops a submission before any handler runs.
+          send.type = 'button';
+          send.setAttribute('data-act', 'predict:' + row.match_id);
           form.appendChild(home);
           form.appendChild(el('span', 'muted', '–'));
           form.appendChild(away);
           form.appendChild(send);
 
-          form.addEventListener('submit', function (event) {
-            event.preventDefault();
+          send.addEventListener('click', function (event) {
+            if (event && event.preventDefault) event.preventDefault();
             var h = parseInt(home.value, 10);
             var a = parseInt(away.value, 10);
             if (!(h >= 0 && h <= 9 && a >= 0 && a <= 9)) {

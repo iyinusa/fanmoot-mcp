@@ -279,10 +279,14 @@ await new Promise((resolve) => setTimeout(resolve, 0));
 /* The interactions a test can ask for, in order. `act` is one; `acts` is a
  * list. Controls a view builds in script have no id, so they are found by the
  * `data-act` / `data-field` attributes the views put on them for exactly this:
- *   { submit: <form id>, field: <textarea id>, text }   the thread's composer
+ *   { submit: <button id>, field: <textarea id>, text } type, then press send
  *   { fill: { <data-field>: <value>, … } }              type into built inputs
  *   { click: <data-act> }                               press a built button
- *   { send: <data-act> }                                submit a built form   */
+ *
+ * There is deliberately no way to fire a form's `submit` event. Inside a host
+ * sandbox without `allow-forms` — Claude's — the browser drops a submission
+ * before that event exists, so a test that fired it would pass for a button
+ * that does nothing in the one place it has to work. */
 function byAttribute(name, value) {
   let found = null;
   document.body.walk((node) => {
@@ -296,8 +300,9 @@ for (const act of acts) {
   if (act.submit) {
     const box = document.getElementById(act.field);
     if (box) box.value = act.text ?? '';
-    const form = document.getElementById(act.submit);
-    if (form) form.dispatch('submit');
+    const button = document.getElementById(act.submit);
+    if (!button) errors.push(`no button ${act.submit}`);
+    else button.dispatch('click', { stopPropagation() {} });
   }
   for (const [field, value] of Object.entries(act.fill ?? {})) {
     const box = byAttribute('data-field', field);
@@ -308,11 +313,6 @@ for (const act of acts) {
     const button = byAttribute('data-act', act.click);
     if (!button) errors.push(`no control ${act.click}`);
     else button.dispatch('click', { stopPropagation() {} });
-  }
-  if (act.send) {
-    const form = byAttribute('data-act', act.send);
-    if (!form) errors.push(`no form ${act.send}`);
-    else form.dispatch('submit');
   }
   await new Promise((resolve) => setTimeout(resolve, 0));
   await new Promise((resolve) => setTimeout(resolve, 0));

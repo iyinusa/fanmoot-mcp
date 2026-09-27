@@ -82,7 +82,7 @@
         ></textarea>
         <div class="actions">
           <p class="outcome" id="outcome" role="status" aria-live="polite"></p>
-          <button type="submit" id="send">Reply</button>
+          <button type="button" id="send">Reply</button>
         </div>
       </form>
     </main>
@@ -143,8 +143,12 @@
           outcome.className = 'outcome' + (kind ? ' ' + kind : '');
         }
 
-        composer.addEventListener('submit', function (event) {
-          event.preventDefault();
+        /* Sent from the button's click, never from the form's `submit`: a host
+         * sandbox without `allow-forms` (Claude's is one) drops a form
+         * submission before the submit event fires, so a composer listening
+         * for it is a Reply button that does nothing at all. */
+        function sendReply(event) {
+          if (event && event.preventDefault) event.preventDefault();
           var body = box.value.trim();
           if (!body || !replyingTo || !bridge) return;
 
@@ -176,6 +180,12 @@
             .then(function () {
               send.disabled = false;
             });
+        }
+
+        send.addEventListener('click', sendReply);
+        // Ctrl/⌘+Enter sends, as in most composers; plain Enter is a new line.
+        box.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) sendReply(event);
         });
 
         window.fanmoot(function (payload, result, view) {

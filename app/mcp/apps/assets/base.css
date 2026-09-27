@@ -92,6 +92,14 @@
   box-sizing: border-box;
 }
 
+/* `hidden` means hidden. The browser's own rule for it is only a default, so
+ * any class that sets `display` — `.avatar` is a grid — quietly overrides it,
+ * and a fallback initial that was hidden behind a loaded photo is drawn as a
+ * second avatar underneath it. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   /* Everything below is in rem, so the whole view scales with the reader's
    * own text size — which is what 200% zoom clean means (`S6-7`). */

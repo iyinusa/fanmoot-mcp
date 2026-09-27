@@ -103,7 +103,7 @@ class FanmootMCP(FastMCP[Any]):
         register_read_tools(self)
         register_write_tools(self)
 
-        # The four `ui://` views (`S6`), last: they attach `_meta.ui` to tools
+        # The `ui://` views (`S6`), last: they attach `_meta.ui` to tools
         # that must already be registered, and a view pointing at a tool that
         # does not exist is caught here rather than when a host tries to render
         # it.

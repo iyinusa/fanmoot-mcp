@@ -1,0 +1,204 @@
+<!doctype html>
+<!--
+  ui://fanmoot/fan — `whoami`, as the fan's own card.
+
+  "Who am I" is usually asked right before "post that", so this card answers
+  the question the fan is really asking: whose name will this go out under,
+  and for which club. The handle and the club lead; the counts follow.
+
+  The one flag that changes what this surface can do is shown as a sentence,
+  not a colour: an unconfirmed email means Fanmoot will not let them post yet,
+  whatever the assistant was granted.
+
+  Nothing private: the email address itself is never in the payload (the
+  tool leaves it out), so there is nothing here to hide.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fanmoot fan</title>
+    <style>
+      __BASE_CSS__
+      __CARD_CSS__
+
+      .who {
+        display: flex;
+        gap: 0.875rem;
+        align-items: center;
+      }
+      .who .avatar-wrap,
+      .who .avatar {
+        width: 3.5rem;
+        height: 3.5rem;
+      }
+      .who .avatar-wrap .crest {
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+      .club-line {
+        margin-top: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .club-line a {
+        font-weight: var(--font-weight-semibold, 600);
+      }
+      .bio {
+        margin-top: 0.625rem;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .stats {
+        margin-top: 0.875rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+        gap: 0.5rem;
+      }
+      .stat {
+        background: var(--color-background-tertiary, var(--fm-raised));
+        border-radius: var(--border-radius-md, 10px);
+        padding: 0.5rem 0.625rem;
+      }
+      .stat .value {
+        font-weight: var(--font-weight-semibold, 600);
+        font-size: var(--font-heading-sm-size, 1.0625rem);
+      }
+      .notice {
+        margin-top: 0.75rem;
+        color: var(--color-text-warning, var(--fm-amber-text));
+        font-size: var(--font-text-sm-size, 0.8125rem);
+      }
+      .footer {
+        margin-top: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="who" id="who"></div>
+      <h1 class="sr-only" id="heading">Your Fanmoot account</h1>
+      <div id="club"></div>
+      <p class="bio" id="bio" hidden></p>
+      <div class="stats" id="stats" aria-label="Your numbers"></div>
+      <p class="notice" id="notice" hidden></p>
+      <p class="footer" id="footer"></p>
+      <p class="faint" id="status" role="status"></p>
+    </main>
+
+    <script>
+      __BRIDGE_JS__
+    </script>
+    <script>
+      __CARD_JS__
+    </script>
+    <script>
+      (function () {
+        var card = window.fanmootCard;
+        var el = card.el;
+        var who = document.getElementById('who');
+        var heading = document.getElementById('heading');
+        var club = document.getElementById('club');
+        var bio = document.getElementById('bio');
+        var stats = document.getElementById('stats');
+        var notice = document.getElementById('notice');
+        var footer = document.getElementById('footer');
+
+        /** "18 days", "7 months", "3 years" — tenure the way a fan says it. */
+        function tenure(days) {
+          if (days < 60) return days + (days === 1 ? ' day' : ' days');
+          if (days < 730) return Math.round(days / 30.4) + ' months';
+          return Math.round(days / 365.25) + ' years';
+        }
+
+        function stat(label, value) {
+          var box = el('div', 'stat');
+          box.appendChild(el('p', 'value', value));
+          box.appendChild(el('p', 'faint', label));
+          stats.appendChild(box);
+        }
+
+        window.fanmoot(function (payload, result, view) {
+          [who, club, stats, footer].forEach(function (node) {
+            node.replaceChildren();
+          });
+
+          if (!payload.handle) {
+            heading.className = '';
+            heading.textContent = 'Fanmoot';
+            who.appendChild(el('p', 'empty', payload.spoken || 'No account to show.'));
+            view.updateModelContext({ showing: 'fan', spoken: payload.spoken });
+            return;
+          }
+
+          var team = payload.club || null;
+          var wrap = el('div', 'avatar-wrap');
+          var initial = el('div', 'avatar', (payload.name || payload.handle).charAt(0));
+          initial.setAttribute('aria-hidden', 'true');
+          if (payload.avatar_url) {
+            var img = document.createElement('img');
+            img.className = 'avatar';
+            img.src = payload.avatar_url;
+            img.alt = '';
+            img.onerror = function () {
+              img.hidden = true;
+              initial.hidden = false;
+            };
+            initial.hidden = true;
+            wrap.appendChild(img);
+          }
+          wrap.appendChild(initial);
+          if (team && team.crest_url) wrap.appendChild(card.crest(team.crest_url, team.name));
+          who.appendChild(wrap);
+
+          var names = el('div');
+          var line = el('div', 'byline');
+          line.appendChild(el('span', 'name', payload.name || payload.handle));
+          if (payload.is_verified) {
+            var tick = el('span', 'verified', '✓');
+            tick.setAttribute('role', 'img');
+            tick.setAttribute('aria-label', 'Verified');
+            line.appendChild(tick);
+          }
+          names.appendChild(line);
+          names.appendChild(el('p', 'muted', '@' + payload.handle));
+          who.appendChild(names);
+          heading.textContent = payload.name + ' on Fanmoot';
+
+          if (team) {
+            var row = el('div', 'club-line');
+            if (team.crest_url) row.appendChild(card.crest(team.crest_url, team.name));
+            row.appendChild(team.url ? card.link(team.url, null, team.name, view) : el('span', 'name', team.name));
+            if (team.competition) row.appendChild(el('span', 'faint', '· ' + team.competition));
+            club.appendChild(row);
+          } else {
+            club.appendChild(el('p', 'muted club-line', 'Not signed to a club yet.'));
+          }
+
+          bio.textContent = payload.bio || '';
+          bio.hidden = !payload.bio;
+
+          if (team) stat('At ' + team.short_name, tenure(payload.tenure_days || 0));
+          stat('Followers', String(payload.followers || 0));
+          stat('Following', String(payload.following || 0));
+          if (payload.joined_at && team) {
+            var since = new Date(payload.joined_at);
+            if (isFinite(since.getTime())) {
+              stat('Signed since', since.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }));
+            }
+          }
+
+          notice.hidden = payload.email_verified !== false;
+          notice.textContent = payload.email_verified === false
+            ? 'Confirm your email address on Fanmoot before you can post.'
+            : '';
+
+          if (payload.url) footer.appendChild(card.link(payload.url, 'open', 'Open your profile', view));
+
+          view.updateModelContext({ showing: 'fan', handle: payload.handle, spoken: payload.spoken });
+        });
+      })();
+    </script>
+  </body>
+</html>

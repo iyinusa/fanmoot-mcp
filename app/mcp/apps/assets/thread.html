@@ -19,6 +19,11 @@
 
   Takes are strangers talking. They are inserted as text, never as markup, and
   every one is attributed to the handle that posted it.
+
+  Each take is the shared moot card (`card.js`): crest, tier, pictures, link,
+  quote and the chip back to its match. Every card has its own Reply button,
+  and its reactions call `react_to_moot` through the host, the same way the
+  composer calls `reply_to_moot`.
 -->
 <html lang="en">
   <head>
@@ -27,52 +32,15 @@
     <title>Fanmoot thread</title>
     <style>
       __BASE_CSS__
+      __CARD_CSS__
 
-      .take {
-        display: flex;
-        gap: 0.625rem;
-        padding: 0.625rem 0;
-        border-top: 1px solid var(--color-border-primary, var(--fm-line));
-      }
-      .take:first-of-type {
-        border-top: 0;
-      }
-      .avatar {
-        width: 1.875rem;
-        height: 1.875rem;
-        border-radius: 50%;
-        flex: none;
-        object-fit: cover;
-        background: var(--color-background-tertiary, var(--fm-raised));
-        display: grid;
-        place-items: center;
-        font-size: var(--font-text-sm-size, 0.8125rem);
-        font-weight: var(--font-weight-semibold, 600);
-        color: var(--color-text-secondary, var(--fm-muted));
-      }
-      .byline {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: baseline;
-        gap: 0.375rem;
-      }
-      .handle {
-        font-weight: var(--font-weight-semibold, 600);
-      }
-      .body {
-        margin-top: 0.125rem;
-        overflow-wrap: anywhere;
-      }
-      .reactions {
-        margin-top: 0.375rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.375rem;
-      }
       .composer {
         margin-top: 0.75rem;
         border-top: 1px solid var(--color-border-primary, var(--fm-line));
         padding-top: 0.75rem;
+      }
+      .composer .target {
+        margin-bottom: 0.375rem;
       }
       .composer .actions {
         margin-top: 0.5rem;
@@ -99,10 +67,12 @@
     <main class="card">
       <h1 id="subject">The conversation</h1>
       <p class="faint" id="summary">Waiting for the thread.</p>
+      <div id="fixture"></div>
 
       <ul id="takes" aria-label="Takes from fans"></ul>
 
       <form class="composer" id="composer" hidden>
+        <p class="faint target" id="target"></p>
         <label class="sr-only" for="reply">Your reply</label>
         <textarea
           id="reply"
@@ -121,74 +91,51 @@
       __BRIDGE_JS__
     </script>
     <script>
+      __CARD_JS__
+    </script>
+    <script>
       (function () {
+        var card = window.fanmootCard;
         var subject = document.getElementById('subject');
         var summary = document.getElementById('summary');
+        var fixture = document.getElementById('fixture');
         var list = document.getElementById('takes');
         var composer = document.getElementById('composer');
+        var target = document.getElementById('target');
         var box = document.getElementById('reply');
         var send = document.getElementById('send');
         var outcome = document.getElementById('outcome');
         var replyingTo = null;
         var bridge = null;
+        var inMatch = false;
 
-        function text(tag, className, value) {
-          var node = document.createElement(tag);
-          if (className) node.className = className;
-          if (value != null) node.textContent = value;
-          return node;
+        /** Point the composer at one take. Every card's Reply button lands
+         *  here, so a fan answers the take they are looking at — not whichever
+         *  one happened to be first. */
+        function aim(take, focus) {
+          replyingTo = take.short_id || take.id;
+          var who = take.name || take.handle;
+          target.textContent = 'Replying to ' + who + ' (@' + take.handle + ')';
+          box.placeholder = 'Reply to ' + who + '…';
+          box.setAttribute('aria-label', 'Reply to ' + who);
+          composer.hidden = false;
+          // Only when the fan asked. Focusing on render would pull the caret
+          // out of the host's own message box the moment the card appeared.
+          if (focus && box.focus) box.focus();
         }
 
-        function avatarOf(take) {
-          if (take.avatar_url) {
-            var img = document.createElement('img');
-            img.className = 'avatar';
-            img.src = take.avatar_url;
-            img.alt = '';
-            return img;
-          }
-          // No avatar is not a broken image: the initial is the fallback, and
-          // it is hidden from a screen reader because the handle is right
-          // beside it and saying it twice is noise.
-          var initial = text('div', 'avatar', (take.name || take.handle || '?').charAt(0));
-          initial.setAttribute('aria-hidden', 'true');
-          return initial;
-        }
-
-        function reactionsOf(take) {
-          var counts = take.reactions || {};
-          var kinds = Object.keys(counts).filter(function (kind) {
-            return counts[kind] > 0;
+        function cardOf(take) {
+          return card.take(take, {
+            view: bridge,
+            tag: 'li',
+            react: true,
+            onReply: function (take) {
+              aim(take, true);
+            },
+            // In a match's own thread, a chip back to that match is a link to
+            // the page the fan is already on.
+            match: !inMatch,
           });
-          if (!kinds.length) return null;
-          var row = text('div', 'reactions');
-          kinds.forEach(function (kind) {
-            // The word and the number, never an emoji alone.
-            row.appendChild(text('span', 'pill', kind + ' ' + counts[kind]));
-          });
-          return row;
-        }
-
-        function takeOf(take) {
-          var item = text('li', 'take');
-          item.appendChild(avatarOf(take));
-
-          var body = text('div');
-          var byline = text('div', 'byline');
-          byline.appendChild(text('span', 'handle', take.name || take.handle));
-          byline.appendChild(text('span', 'faint', '@' + take.handle));
-          if (take.club) byline.appendChild(text('span', 'faint', take.club));
-          if (take.is_agent) byline.appendChild(text('span', 'pill', 'agent'));
-          body.appendChild(byline);
-
-          // textContent, not innerHTML: a moot is something a stranger typed.
-          body.appendChild(text('p', 'body', take.body));
-
-          var reactions = reactionsOf(take);
-          if (reactions) body.appendChild(reactions);
-
-          item.appendChild(body);
-          return item;
         }
 
         function settle(message, kind) {
@@ -210,7 +157,7 @@
               if (result && result.isError) {
                 // The tool's own sentence — "connect your account", "that take
                 // is too long" — is already written for a fan (`S5-8`).
-                settle(spokenOf(result) || 'That did not post.', 'bad');
+                settle(card.spoken(result) || 'That did not post.', 'bad');
                 return;
               }
               if (payload.held) {
@@ -218,23 +165,18 @@
               } else {
                 settle('Posted.', 'good');
               }
+              // The reply the tool answered with, on the card now — not on
+              // the next read of the thread, which may never come.
+              if (payload.take) list.appendChild(cardOf(payload.take));
               box.value = '';
             })
             .catch(function (error) {
               settle(error.message || 'That did not post.', 'bad');
             })
-            .finally(function () {
+            .then(function () {
               send.disabled = false;
             });
         });
-
-        function spokenOf(result) {
-          var blocks = (result && result.content) || [];
-          for (var i = 0; i < blocks.length; i++) {
-            if (blocks[i] && blocks[i].type === 'text') return blocks[i].text;
-          }
-          return '';
-        }
 
         window.fanmoot(function (payload, result, view) {
           bridge = view;
@@ -245,8 +187,12 @@
           var takes = payload.takes || payload.replies || [];
           if (root) takes = [root].concat(takes);
 
-          if (payload.match && payload.match.home && payload.match.away) {
-            subject.textContent = payload.match.home.name + ' v ' + payload.match.away.name;
+          var match = payload.match && payload.match.home && payload.match.away ? payload.match : null;
+          inMatch = Boolean(match);
+          fixture.replaceChildren();
+          if (match) {
+            subject.textContent = match.home.name + ' v ' + match.away.name;
+            if (match.url) fixture.appendChild(card.link(match.url, 'open', 'Open the match on Fanmoot', view));
           } else if (root) {
             subject.textContent = 'The argument';
           } else {
@@ -256,25 +202,17 @@
 
           list.replaceChildren();
           if (!takes.length) {
-            list.appendChild(text('li', 'empty', 'Nobody has said anything yet.'));
+            list.appendChild(card.el('li', 'empty', 'Nobody has said anything yet.'));
           } else {
             takes.forEach(function (take) {
-              list.appendChild(takeOf(take));
+              list.appendChild(cardOf(take));
             });
           }
 
-          // The composer needs one take to answer. `read_thread` names it;
-          // for a room, the first take is the one on screen to reply to.
-          replyingTo = (root && (root.short_id || root.id)) || (takes[0] && (takes[0].short_id || takes[0].id)) || null;
-          composer.hidden = !replyingTo;
-          if (replyingTo && takes.length) {
-            var target = root || takes[0];
-            box.setAttribute(
-              'aria-label',
-              'Reply to ' + (target.name || target.handle)
-            );
-            box.placeholder = 'Reply to ' + (target.name || target.handle) + '…';
-          }
+          // The composer starts aimed at the take the tool was about —
+          // `read_thread` names it; for a room, the first one on screen.
+          composer.hidden = true;
+          if (root || takes[0]) aim(root || takes[0]);
 
           view.updateModelContext({ showing: 'thread', spoken: payload.spoken });
         });

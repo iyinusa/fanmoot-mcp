@@ -128,23 +128,33 @@ kickoff says a take is still possible, and a rate limit says how long to wait.
 
 ## What it can show
 
-Eight of the tools have a visual answer as well as a spoken one. A host that
+Fifteen of the tools have a visual answer as well as a spoken one. A host that
 supports the **MCP Apps** extension (`io.modelcontextprotocol/ui`, spec
-`2026-01-26`) renders them; a host that does not gets the same sentence and the
-same `structuredContent` it always got, which is the graceful degradation the
-extension asks for.
+`2026-01-26`) renders them — Claude and ChatGPT both implement it, from the
+same `_meta.ui.resourceUri` and the same bridge — and a host that does not gets
+the same sentence and the same `structuredContent` it always got, which is the
+graceful degradation the extension asks for.
 
 | View | Rendered for | What it is |
 |---|---|---|
 | `ui://fanmoot/scoreboard` | `get_match`, `live_scores` | Crests, the scoreline, the live minute |
-| `ui://fanmoot/thread` | `read_match_conversation`, `read_thread`, `trending_takes` | The takes, **and a composer that replies** |
+| `ui://fanmoot/thread` | `read_match_conversation`, `read_thread`, `trending_takes` | The takes as moot cards, **with reactions, a Reply per take and a composer** |
 | `ui://fanmoot/fixtures` | `list_matches`, `upcoming_matches` | A matchweek grouped by day |
 | `ui://fanmoot/mood` | `match_mood` | The sentiment split as one bar and three counts |
+| `ui://fanmoot/moot` | `post_moot`, `reply_to_moot` | The take just posted, as fanmoot.com shows it — or held, with Fanmoot's reason |
+| `ui://fanmoot/fan` | `whoami` | Handle, club and tenure, followers, and whether they can post yet |
+| `ui://fanmoot/club` | `find_club`, `club_news` | A club with a **Follow** button, a "which one?" answered with a tap, or headlines |
+| `ui://fanmoot/predictions` | `predict_match`, `my_predictions` | Calls beside real results, and open fixtures **called from the card** |
 
-The thread view is the one that is not a picture of an answer: its composer
-calls `reply_to_moot` back through the host as a `tools/call`, on the same
-connection and the same OAuth grant, so a fan reads the argument and answers it
-without leaving the card.
+A take is drawn by one shared renderer (`assets/card.js`, `assets/card.css`)
+wherever it appears: the club's crest and colour, the fan's tier, pictures, the
+link, the quoted take, and a chip back to the match it was posted under.
+
+The cards act only through the host. Reactions call `react_to_moot`, the
+composer `reply_to_moot`, the club card `follow` and an open fixture
+`predict_match` — each as a `tools/call` on the same connection and the same
+OAuth grant, and each card changes only when the tool has answered. A fan who
+has not connected their account is told so in the tool's own words.
 
 Each view is a single self-contained HTML document. The declared CSP has **no**
 `connectDomains` — the views never fetch, because everything they draw arrives
@@ -400,7 +410,7 @@ flowchart LR
       T["/mcp — Streamable HTTP<br/>2025-11-25"]
       G[bearer gate<br/>401 / 403 + RFC 9728]
       AS["OAuth 2.1 AS<br/>/authorize /token /oauth/register"]
-      TL[19 tools · 4 ui:// views]
+      TL[19 tools · 8 ui:// views]
       K[read-through cache<br/>+ warm-up loop]
       M[match_mood]
     end
@@ -480,7 +490,7 @@ code that meets it and the test that proves it.
 | Incremental scope consent (SEP-835) | `app/oauth/bearer.py` | `tests/test_oauth_challenge.py` |
 | Dynamic Client Registration (RFC 7591/7592) | `app/oauth/dcr.py` | `tests/test_oauth_dcr.py` |
 | Client ID metadata documents (SEP-991), SSRF-fenced | `app/oauth/dcr.py` | `tests/test_oauth_client_metadata.py` |
-| MCP Apps `ui://` views (`2026-01-26`) | `app/mcp/apps/` | `tests/test_apps_views.py`, `tests/test_apps_render.py` |
+| MCP Apps `ui://` views (`2026-01-26`) | `app/mcp/apps/` | `tests/test_apps_views.py`, `tests/test_apps_render.py`, `tests/test_apps_cards.py` |
 | < 500 ms (400 ms p95 budget per tool) | cache + warm-up + cached mood | `tests/test_latency.py`, `make latency` |
 | Public HTTPS URL, HSTS | Dokploy + Traefik, `app/middleware.py` | `tests/test_security_headers.py`, `make smoke` |
 | AWS service actually called | `match_mood` → Bedrock Converse (`app/mood.py`) | `tests/test_tools_mood.py` |

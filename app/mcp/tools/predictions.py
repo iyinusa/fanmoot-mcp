@@ -76,6 +76,8 @@ def register(server: FastMCP[Any]) -> None:
             competition=fixture.league.name if fixture.league else None,
             home=home,
             away=away,
+            home_crest_url=absolute(fixture.home.badge_path) if fixture.home else None,
+            away_crest_url=absolute(fixture.away.badge_path) if fixture.away else None,
             kickoff_at=fixture.kickoff_at,
             kickoff_spoken=voice.kickoff_phrase(fixture.kickoff_at, now=moment),
             status=fixture.status,

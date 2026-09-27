@@ -1,0 +1,259 @@
+<!doctype html>
+<!--
+  ui://fanmoot/predictions — `predict_match` and `my_predictions`.
+
+  One row shape for both tools, because a prediction is one thing at two
+  points in its life: a fixture still open to a call, and a call waiting on —
+  or settled by — the real result. A settled row puts the called score and the
+  real one side by side, because that comparison is the whole card.
+
+  An open fixture can be called from the row: two numbers and a button that
+  calls `predict_match` through the host, as the fan. The row only changes to
+  "your call" once the tool has answered — a call from a fan who is not
+  connected did not happen, and the card must not say it did.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fanmoot predictions</title>
+    <style>
+      __BASE_CSS__
+      __CARD_CSS__
+
+      #content {
+        margin-top: 0.75rem;
+      }
+      section + section {
+        margin-top: 1rem;
+      }
+      h2 {
+        margin-bottom: 0.25rem;
+      }
+      .prediction {
+        padding: 0.625rem 0;
+        border-top: 1px solid var(--color-border-primary, var(--fm-line));
+      }
+      .prediction:first-child {
+        border-top: 0;
+      }
+      .fixture {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-weight: var(--font-weight-semibold, 600);
+      }
+      .fixture .crest {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+      .verdict {
+        margin-top: 0.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.375rem;
+      }
+      .called {
+        font-variant-numeric: tabular-nums;
+      }
+      .exact {
+        background: var(--color-background-success, rgb(64 158 70 / 0.16));
+        color: var(--color-text-success, var(--fm-green-text));
+      }
+      .call {
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .call input {
+        font: inherit;
+        width: 3.25rem;
+        padding: 0.3125rem 0.375rem;
+        text-align: center;
+        color: var(--color-text-primary, var(--fm-text));
+        background: var(--color-background-primary, var(--fm-bg));
+        border: 1px solid var(--color-border-primary, var(--fm-line));
+        border-radius: var(--border-radius-md, 10px);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1 id="heading">Predictions</h1>
+      <p class="faint" id="summary"></p>
+      <div id="content"></div>
+      <p class="faint" id="status" role="status"></p>
+    </main>
+
+    <script>
+      __BRIDGE_JS__
+    </script>
+    <script>
+      __CARD_JS__
+    </script>
+    <script>
+      (function () {
+        var card = window.fanmootCard;
+        var el = card.el;
+        var heading = document.getElementById('heading');
+        var summary = document.getElementById('summary');
+        var content = document.getElementById('content');
+
+        function score(home, away) {
+          return home + '–' + away;
+        }
+
+        function settled(row) {
+          return row.actual_home != null && row.actual_away != null && row.status === 'finished';
+        }
+
+        function fixture(row) {
+          var line = el('div', 'fixture');
+          if (row.home_crest_url) line.appendChild(card.crest(row.home_crest_url, row.home));
+          line.appendChild(el('span', null, row.home + ' v ' + row.away));
+          if (row.away_crest_url) line.appendChild(card.crest(row.away_crest_url, row.away));
+          return line;
+        }
+
+        /** Two boxes and a button. Validated here as well as by the tool's own
+         *  schema (0 to 9), so a slip is a sentence under the row rather than
+         *  a round trip that fails. */
+        function callForm(row, holder, view) {
+          var form = el('form', 'call');
+          form.setAttribute('data-act', 'predict:' + row.match_id);
+          var status = el('p', 'card-status');
+          status.setAttribute('role', 'status');
+          status.setAttribute('aria-live', 'polite');
+
+          function box(side, name, value) {
+            var input = el('input');
+            input.type = 'number';
+            input.setAttribute('min', '0');
+            input.setAttribute('max', '9');
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('aria-label', name + ' goals');
+            input.setAttribute('data-field', side + ':' + row.match_id);
+            input.placeholder = '0';
+            if (value != null) input.value = String(value);
+            return input;
+          }
+
+          var home = box('home', row.home, row.home_score);
+          var away = box('away', row.away, row.away_score);
+          var send = el('button', null, row.called ? 'Change my call' : 'Call it');
+          send.type = 'submit';
+          form.appendChild(home);
+          form.appendChild(el('span', 'muted', '–'));
+          form.appendChild(away);
+          form.appendChild(send);
+
+          form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            var h = parseInt(home.value, 10);
+            var a = parseInt(away.value, 10);
+            if (!(h >= 0 && h <= 9 && a >= 0 && a <= 9)) {
+              card.settle(status, 'Put a score from 0 to 9 for each side.', 'bad');
+              return;
+            }
+            send.disabled = true;
+            card.settle(status, 'Calling it…');
+            view
+              .callTool('predict_match', { match: row.match_id, home_score: h, away_score: a })
+              .then(function (result) {
+                if (result && result.isError) {
+                  card.settle(status, card.spoken(result) || 'That call did not go in.', 'bad');
+                  return;
+                }
+                var payload = (result && result.structuredContent) || {};
+                var called = payload.prediction || {};
+                // Drawn again from what the tool answered, not from the boxes.
+                var updated = Object.assign({}, row, called, { called: true });
+                holder.replaceChildren();
+                draw(updated, holder, view);
+                var done = el(
+                  'p',
+                  'card-status good',
+                  'Called: ' + row.home + ' ' + score(updated.home_score, updated.away_score) + ' ' + row.away + '.'
+                );
+                done.setAttribute('role', 'status');
+                holder.appendChild(done);
+              })
+              .catch(function (error) {
+                card.settle(status, (error && error.message) || 'That call did not go in.', 'bad');
+              })
+              .then(function () {
+                send.disabled = false;
+              });
+          });
+
+          holder.appendChild(form);
+          holder.appendChild(status);
+        }
+
+        function draw(row, holder, view) {
+          holder.appendChild(fixture(row));
+          var verdict = el('div', 'verdict');
+          if (row.called) {
+            verdict.appendChild(el('span', 'called', 'Your call ' + score(row.home_score, row.away_score)));
+          }
+          if (settled(row)) {
+            verdict.appendChild(el('span', 'muted', '· finished ' + score(row.actual_home, row.actual_away)));
+            if (row.called && row.points != null) {
+              verdict.appendChild(el('span', row.exact ? 'pill exact' : 'pill', row.exact ? 'Exact · ' + row.points + ' pts' : row.points + (row.points === 1 ? ' pt' : ' pts')));
+            }
+          } else if (row.status === 'live') {
+            verdict.appendChild(el('span', 'pill live', 'Live'));
+          } else if (row.kickoff_spoken) {
+            verdict.appendChild(el('span', 'faint', (row.competition ? row.competition + ' · ' : '') + row.kickoff_spoken));
+          }
+          holder.appendChild(verdict);
+
+          // Calls close at kick-off, so only a fixture that has not started
+          // can be called, or have its call changed.
+          if (row.status === 'scheduled') callForm(row, holder, view);
+          if (row.url) holder.appendChild(card.link(row.url, 'open', 'Match on Fanmoot', view));
+        }
+
+        function section(title, rows, view) {
+          if (!rows.length) return;
+          var part = el('section');
+          if (title) part.appendChild(el('h2', null, title));
+          var list = el('ul');
+          rows.forEach(function (row) {
+            var item = el('li', 'prediction');
+            draw(row, item, view);
+            list.appendChild(item);
+          });
+          part.appendChild(list);
+          content.appendChild(part);
+        }
+
+        window.fanmoot(function (payload, result, view) {
+          content.replaceChildren();
+          summary.textContent = payload.spoken || '';
+
+          if (payload.prediction) {
+            heading.textContent = 'Your call is in';
+            section('', [payload.prediction], view);
+          } else if (payload.called || payload.open) {
+            heading.textContent = 'Your predictions';
+            section('Still open', payload.open || [], view);
+            section('Your calls', payload.called || [], view);
+            if (!(payload.open || []).length && !(payload.called || []).length) {
+              content.appendChild(el('p', 'empty', 'Nothing called and nothing open right now.'));
+            }
+            if (payload.has_more) content.appendChild(el('p', 'faint', 'More than this on Fanmoot.'));
+          } else {
+            heading.textContent = 'Predictions';
+            if (!payload.spoken) content.appendChild(el('p', 'empty', 'Nothing to show.'));
+          }
+
+          view.updateModelContext({ showing: 'predictions', spoken: payload.spoken });
+        });
+      })();
+    </script>
+  </body>
+</html>

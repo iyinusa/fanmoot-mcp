@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+  ui://fanmoot/moot — what `post_moot` and `reply_to_moot` just did.
+
+  The moment it matters most that the answer looks like Fanmoot: a fan has
+  just said something in public, under their own name, through an assistant.
+  So the card is the take exactly as fanmoot.com will show it — crest, tier,
+  the chip back to its match — with a link to the real thing.
+
+  One rule above the rest, carried from `S5-2`: **a held take is not live.**
+  `held` decides the headline and the banner, and Fanmoot's own `gate_reason`
+  is shown word for word. There is no path through this view that says
+  "Posted" about a take Fanmoot is holding.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fanmoot take</title>
+    <style>
+      __BASE_CSS__
+      __CARD_CSS__
+
+      .banner {
+        margin: 0.5rem 0 0.75rem;
+        padding: 0.5rem 0.625rem;
+        border-radius: var(--border-radius-md, 10px);
+        background: var(--color-background-tertiary, var(--fm-raised));
+        font-size: var(--font-text-sm-size, 0.8125rem);
+      }
+      .banner:empty {
+        display: none;
+      }
+      .banner.good {
+        color: var(--color-text-success, var(--fm-green-text));
+      }
+      .banner.held {
+        color: var(--color-text-warning, var(--fm-amber-text));
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1 id="heading">Your take</h1>
+      <p class="banner" id="banner" role="status"></p>
+      <div class="empty" id="take">Waiting for your take.</div>
+      <p class="faint" id="status" role="status"></p>
+    </main>
+
+    <script>
+      __BRIDGE_JS__
+    </script>
+    <script>
+      __CARD_JS__
+    </script>
+    <script>
+      (function () {
+        var card = window.fanmootCard;
+        var heading = document.getElementById('heading');
+        var banner = document.getElementById('banner');
+        var slot = document.getElementById('take');
+
+        window.fanmoot(function (payload, result, view) {
+          slot.replaceChildren();
+          slot.className = '';
+          var take = payload.take || null;
+          var replying = Boolean(payload.replying_to);
+
+          if (!take) {
+            // Not a post at all — a host that pointed another answer here.
+            // The tool's own sentence is still an answer; a blank card is not.
+            heading.textContent = 'Fanmoot';
+            banner.textContent = '';
+            slot.appendChild(card.el('p', 'empty', payload.spoken || 'Nothing was posted.'));
+            view.updateModelContext({ showing: 'moot', spoken: payload.spoken });
+            return;
+          }
+
+          if (payload.held) {
+            heading.textContent = replying ? 'Your reply is held for review' : 'Your take is held for review';
+            banner.textContent =
+              (payload.gate_reason || 'Fanmoot is checking it is about football before it goes live.') +
+              ' Only you can see it for now.';
+            banner.className = 'banner held';
+          } else {
+            heading.textContent = replying ? 'Your reply is live' : 'Your take is live';
+            banner.textContent = replying
+              ? 'Posted in the thread under @' + take.handle + '.'
+              : 'Posted on Fanmoot under @' + take.handle + '.';
+            banner.className = 'banner good';
+          }
+
+          // The fan's own take: nothing to react to, nothing to reply to here,
+          // and never folded — they should see all of what went out.
+          slot.appendChild(card.take(take, { view: view, clamp: 0, alone: true }));
+
+          view.updateModelContext({
+            showing: 'moot',
+            spoken: payload.spoken,
+            held: Boolean(payload.held),
+            take: take.short_id || take.id,
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

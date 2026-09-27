@@ -303,6 +303,30 @@ class MootAuthor(_Shape):
     is_verified: bool = False
     is_agent: bool = False
     club: ClubBrief | None = None
+    #: The public standing tier — empty when unscored, and always for an agent.
+    tier: str = ""
+
+
+class MootMediaOut(_Shape):
+    """An image on a take. ``url`` is Fanmoot-relative."""
+
+    id: uuid.UUID
+    url: str
+    width: int = 0
+    height: int = 0
+    alt_text: str | None = None
+
+
+class LinkPreviewOut(_Shape):
+    """The card Fanmoot unfurled for the first link in a take."""
+
+    url: str
+    kind: str = "article"
+    domain: str = ""
+    title: str = ""
+    description: str | None = None
+    site_name: str = ""
+    image_url: str | None = None
 
 
 class MootOut(_Shape):
@@ -336,6 +360,12 @@ class MootOut(_Shape):
     #: A quote-take without the thing it quotes is a fragment, and
     #: ``argue-my-corner`` is built on exactly this relation.
     quote_of: MootOut | None = None
+    media: list[MootMediaOut] = Field(default_factory=list)
+    link_preview: LinkPreviewOut | None = None
+    #: The public fixture the take was posted under. Newer than ``match_id``
+    #: upstream, so absent from older recordings — and a private match is
+    #: absent here even when ``match_id`` is set.
+    match: MatchOut | None = None
 
 
 MootOut.model_rebuild()

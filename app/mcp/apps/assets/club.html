@@ -1,0 +1,270 @@
+<!doctype html>
+<!--
+  ui://fanmoot/club — `find_club` and `club_news`.
+
+  `find_club` answers three ways and the card follows each:
+
+  * **Resolved** — the club's crest, colours, competition and ground, with a
+    Follow button that calls `follow` through the host, as the fan.
+  * **Ambiguous** — "Arsenal or Aston Villa?" as buttons. A tap puts the fan's
+    answer into the conversation (`ui/message`), which is exactly what they
+    would have typed; the view never picks for them.
+  * **Not found** — the tool's own sentence.
+
+  `club_news` is a list of headlines, each opened through the host. The
+  stories are other publishers' words: inserted as text, and their pictures
+  are only drawn when Fanmoot serves them — anything else the sandbox refuses,
+  and a refused image is hidden rather than left broken.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fanmoot club</title>
+    <style>
+      __BASE_CSS__
+      __CARD_CSS__
+
+      .band {
+        height: 0.375rem;
+        margin: -0.875rem -1rem 0.875rem;
+        border-radius: var(--border-radius-lg, 14px) var(--border-radius-lg, 14px) 0 0;
+        background: var(--club, transparent);
+      }
+      .club-head {
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+      }
+      .club-head .crest {
+        width: 3.25rem;
+        height: 3.25rem;
+      }
+      .club-head .name {
+        font-weight: var(--font-weight-semibold, 600);
+        font-size: var(--font-heading-sm-size, 1.0625rem);
+      }
+      .facts {
+        margin-top: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+      }
+      .club-actions {
+        margin-top: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .choices {
+        margin-top: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+      }
+      .choices button {
+        text-align: left;
+        width: 100%;
+      }
+      .choices .hint {
+        display: block;
+        font-weight: var(--font-weight-normal, 400);
+        font-size: var(--font-text-sm-size, 0.8125rem);
+      }
+      .story {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-top: 1px solid var(--color-border-primary, var(--fm-line));
+      }
+      .story:first-child {
+        border-top: 0;
+      }
+      .story img {
+        width: 4.5rem;
+        height: 4.5rem;
+        object-fit: cover;
+        border-radius: var(--border-radius-md, 10px);
+        flex: none;
+      }
+      .story .headline {
+        font-weight: var(--font-weight-semibold, 600);
+        color: inherit;
+        text-decoration: none;
+      }
+      .story .headline:hover {
+        text-decoration: underline;
+      }
+      .story .summary {
+        margin-top: 0.125rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card" id="surface">
+      <div class="band" id="band" aria-hidden="true"></div>
+      <h1 id="heading">Fanmoot</h1>
+      <p class="faint" id="summary"></p>
+      <div id="content"></div>
+      <p class="card-status" id="status" role="status" aria-live="polite"></p>
+    </main>
+
+    <script>
+      __BRIDGE_JS__
+    </script>
+    <script>
+      __CARD_JS__
+    </script>
+    <script>
+      (function () {
+        var card = window.fanmootCard;
+        var el = card.el;
+        var surface = document.getElementById('surface');
+        var band = document.getElementById('band');
+        var heading = document.getElementById('heading');
+        var summary = document.getElementById('summary');
+        var content = document.getElementById('content');
+        var status = document.getElementById('status');
+        var HEX = /^#[0-9a-fA-F]{6}$/;
+
+        function clubCard(club, view) {
+          if (club.colour && HEX.test(club.colour)) surface.style.setProperty('--club', club.colour);
+          band.hidden = !(club.colour && HEX.test(club.colour));
+
+          var head = el('div', 'club-head');
+          if (club.crest_url) head.appendChild(card.crest(club.crest_url, club.name));
+          var names = el('div');
+          names.appendChild(el('p', 'name', club.name));
+          if (club.nickname) names.appendChild(el('p', 'muted', '“' + club.nickname + '”'));
+          head.appendChild(names);
+          content.appendChild(head);
+
+          var facts = el('div', 'facts');
+          if (club.competition) facts.appendChild(el('span', 'pill', club.competition));
+          if (club.stadium) facts.appendChild(el('span', 'pill', club.stadium));
+          if (club.member_count) {
+            facts.appendChild(
+              el('span', 'pill', club.member_count.toLocaleString() + (club.member_count === 1 ? ' fan' : ' fans'))
+            );
+          }
+          content.appendChild(facts);
+
+          var actions = el('div', 'club-actions');
+          var follow = el('button', null, 'Follow ' + club.short_name);
+          follow.type = 'button';
+          follow.setAttribute('data-act', 'follow');
+          follow.addEventListener('click', function () {
+            follow.disabled = true;
+            card.settle(status, 'Following…');
+            view
+              .callTool('follow', { target: club.slug, kind: 'club' })
+              .then(function (result) {
+                if (result && result.isError) {
+                  // "Connect your account", in the tool's own words.
+                  card.settle(status, card.spoken(result) || 'That follow did not go through.', 'bad');
+                  follow.disabled = false;
+                  return;
+                }
+                var payload = (result && result.structuredContent) || {};
+                follow.textContent = 'Following';
+                card.settle(
+                  status,
+                  'You follow ' + club.name + (payload.follower_count ? ' with ' + payload.follower_count.toLocaleString() + ' others.' : '.'),
+                  'good'
+                );
+              })
+              .catch(function (error) {
+                card.settle(status, (error && error.message) || 'That follow did not go through.', 'bad');
+                follow.disabled = false;
+              });
+          });
+          actions.appendChild(follow);
+          if (club.url) actions.appendChild(card.link(club.url, 'open', 'Open on Fanmoot', view));
+          content.appendChild(actions);
+        }
+
+        function choices(list, view) {
+          var box = el('div', 'choices');
+          list.forEach(function (choice) {
+            var button = el('button', 'quiet');
+            button.type = 'button';
+            button.setAttribute('data-act', 'choose:' + choice.slug);
+            button.appendChild(el('span', null, choice.name));
+            if (choice.hint) button.appendChild(el('span', 'hint muted', choice.hint));
+            button.addEventListener('click', function () {
+              // The fan's answer, as the fan — the model carries on from it.
+              view.say('I mean ' + choice.name + '.');
+              card.settle(status, 'Asked for ' + choice.name + '.');
+            });
+            box.appendChild(button);
+          });
+          content.appendChild(box);
+        }
+
+        function news(items, view) {
+          var list = el('ul');
+          items.forEach(function (item) {
+            var story = el('li', 'story');
+            if (item.image_url) {
+              var img = document.createElement('img');
+              img.src = item.image_url;
+              // The headline beside it says what it shows.
+              img.alt = '';
+              img.onerror = function () {
+                img.hidden = true;
+              };
+              story.appendChild(img);
+            }
+            var words = el('div');
+            words.appendChild(item.url ? card.link(item.url, 'headline', item.headline, view) : el('p', 'headline', item.headline));
+            var meta = [item.source, item.club, item.at ? card.when(item.at) : '']
+              .filter(Boolean)
+              .join(' · ');
+            if (meta) words.appendChild(el('p', 'faint', meta));
+            if (item.summary) words.appendChild(el('p', 'summary muted', item.summary));
+            if (item.take_url) words.appendChild(card.link(item.take_url, 'open', 'See what fans said', view));
+            story.appendChild(words);
+            list.appendChild(story);
+          });
+          content.appendChild(list);
+        }
+
+        window.fanmoot(function (payload, result, view) {
+          content.replaceChildren();
+          card.settle(status, '');
+          band.hidden = true;
+          summary.textContent = payload.spoken || '';
+
+          if (payload.items) {
+            heading.textContent = payload.club ? payload.club + ' news' : 'Club news';
+            if (payload.items.length) news(payload.items, view);
+            else content.appendChild(el('p', 'empty', 'No news right now.'));
+            if (payload.has_more) content.appendChild(el('p', 'faint', 'More than this on Fanmoot.'));
+          } else if (payload.club) {
+            heading.textContent = payload.club.name;
+            heading.className = 'sr-only';
+            summary.textContent = '';
+            clubCard(payload.club, view);
+          } else if (payload.choices && payload.choices.length) {
+            heading.textContent = 'Which one do you mean?';
+            choices(payload.choices, view);
+          } else {
+            heading.textContent = 'Fanmoot';
+            if (!payload.spoken) content.appendChild(el('p', 'empty', 'Nothing to show.'));
+          }
+
+          view.updateModelContext({
+            showing: 'club',
+            club: payload.club && payload.club.slug ? payload.club.slug : payload.club || null,
+            spoken: payload.spoken,
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -35,9 +35,11 @@ from app.fanmoot.models import (
     ClubNewsOut,
     ClubOut,
     LeagueOut,
+    LinkPreviewOut,
     MatchBriefOut,
     MatchEventOut,
     MatchOut,
+    MootMediaOut,
     MootOut,
     PredictionOut,
     PublicUser,
@@ -57,6 +59,25 @@ def absolute(path: str | None) -> str | None:
     if path.startswith(("http://", "https://")):
         return path
     return get_settings().fanmoot_url_for(path)
+
+
+def own(path: str | None) -> str | None:
+    """``absolute``, but only for something served from Fanmoot itself.
+
+    The views' sandbox may load images from Fanmoot's origin and nowhere else
+    (``S6-6``), so a third-party thumbnail handed to one is a broken image. It
+    is left out here rather than drawn and blocked.
+    """
+    url = absolute(path)
+    if url is None:
+        return None
+    return url if url.startswith(get_settings().fanmoot_api_base_url + "/") else None
+
+
+def profile_url(handle: str) -> str | None:
+    """A fan's page. ``/u/{handle}`` is the route fanmoot.com serves; ``/@handle``
+    is not one, and answers with the app's "Not found"."""
+    return absolute(f"/u/{handle}")
 
 
 class Card(BaseModel):
@@ -293,27 +314,137 @@ class LiveAnswer(Answer):
 
 
 # ── The conversation ─────────────────────────────────────────────────────────
+class ImageCard(Card):
+    """A picture on a take, on Fanmoot's own origin."""
+
+    url: str
+    width: int = 0
+    height: int = 0
+    #: The author's description. Empty is allowed upstream and is written as
+    #: "Image from {name}" by the view rather than left blank.
+    alt: str = ""
+
+    @classmethod
+    def of(cls, media: MootMediaOut) -> ImageCard | None:
+        url = own(media.url)
+        if url is None:
+            return None
+        return cls(
+            url=url,
+            width=media.width,
+            height=media.height,
+            alt=untrusted.clean(media.alt_text or ""),
+        )
+
+
+class LinkCard(Card):
+    """The link a take shares, as Fanmoot unfurled it.
+
+    Title and description are the linked page's own words — a third party's,
+    so cleaned like a take. The image survives only when Fanmoot serves it.
+    """
+
+    url: str
+    domain: str = ""
+    title: str = ""
+    description: str = ""
+    image_url: str | None = None
+
+    @classmethod
+    def of(cls, preview: LinkPreviewOut | None) -> LinkCard | None:
+        if preview is None or not preview.url.startswith(("http://", "https://")):
+            return None
+        return cls(
+            url=preview.url,
+            domain=untrusted.clean(preview.domain or preview.site_name),
+            title=untrusted.clean(preview.title),
+            description=untrusted.clean(preview.description or ""),
+            image_url=own(preview.image_url),
+        )
+
+
+class MatchLink(Card):
+    """The fixture a take was posted under — the way back to its thread.
+
+    A take travels: it is quoted, it trends, it turns up in search days later,
+    and a reader who meets it there cannot tell it came from a match thread.
+    The score is carried only when somebody confirmed it (HAD-7), so a view
+    that shows these numbers never shows the clock's assumed 0–0.
+    """
+
+    id: uuid.UUID
+    home: str
+    away: str
+    home_crest_url: str | None = None
+    away_crest_url: str | None = None
+    status: str
+    home_score: int | None = None
+    away_score: int | None = None
+    kickoff_at: datetime
+    url: str | None = None
+
+    @classmethod
+    def of(cls, match: MatchOut | None) -> MatchLink | None:
+        if match is None:
+            return None
+        stated = (
+            match.score_state != voice.ASSUMED
+            and match.home_score is not None
+            and match.away_score is not None
+        )
+        return cls(
+            id=match.id,
+            home=match.home.short_name if match.home else "TBC",
+            away=match.away.short_name if match.away else "TBC",
+            home_crest_url=absolute(match.home.badge_path) if match.home else None,
+            away_crest_url=absolute(match.away.badge_path) if match.away else None,
+            status=match.status,
+            home_score=match.home_score if stated else None,
+            away_score=match.away_score if stated else None,
+            kickoff_at=match.kickoff_at,
+            url=absolute(match.url),
+        )
+
+
 class TakeCard(Card):
-    """One moot. No viewer-specific field: a read tool has no viewer."""
+    """One moot. No viewer-specific field: a read tool has no viewer.
+
+    Carries what the take looks like on fanmoot.com — the club's crest and
+    colour, the fan's tier, the pictures, the link and the quoted take — so a
+    card in a host is recognisably the same moot rather than a transcript of it.
+    """
 
     id: uuid.UUID
     short_id: str = ""
     handle: str
     name: str
     club: str | None = None
+    club_crest_url: str | None = None
+    club_colour: str = ""
+    tier: str = ""
     avatar_url: str | None = None
     is_agent: bool = False
     is_verified: bool = False
     body: str
     posted_at: datetime
+    edited: bool = False
     reply_count: int = 0
     reaction_count: int = 0
     reactions: dict[str, int] = Field(default_factory=dict)
+    images: list[ImageCard] = Field(default_factory=list)
+    link: LinkCard | None = None
+    match: MatchLink | None = None
+    #: The take this one quotes. One level only: a quote inside a quote is
+    #: carried as nothing, as fanmoot.com renders it as a link.
+    quote: TakeCard | None = None
     url: str | None = None
+    profile_url: str | None = None
     spoken: str = ""
 
     @classmethod
-    def of(cls, moot: MootOut) -> TakeCard:
+    def of(cls, moot: MootOut, *, depth: int = 0) -> TakeCard:
+        club = moot.author.club
+        quoted = moot.quote_of
         return cls(
             id=moot.id,
             short_id=moot.short_id,
@@ -321,18 +452,32 @@ class TakeCard(Card):
             # Cleaned, not escaped (`S7-3`): a bidi override in a name or a
             # body makes a card show one thing while the model reads another.
             name=untrusted.clean(moot.author.name),
-            club=moot.author.club.name if moot.author.club else None,
+            club=club.name if club else None,
+            club_crest_url=absolute(club.badge_path) if club else None,
+            club_colour=club.primary_color if club else "",
+            tier="" if moot.author.is_agent else moot.author.tier,
             avatar_url=absolute(moot.author.avatar_url),
             is_agent=moot.author.is_agent,
             is_verified=moot.author.is_verified,
             body=untrusted.visible(moot.body),
             posted_at=moot.created_at,
+            edited=moot.edited_at is not None,
             reply_count=moot.reply_count,
             reaction_count=moot.reaction_count,
             reactions=moot.reaction_counts,
+            images=[card for card in map(ImageCard.of, moot.media) if card is not None],
+            link=LinkCard.of(moot.link_preview),
+            match=MatchLink.of(moot.match),
+            quote=cls.of(quoted, depth=depth + 1)
+            if quoted is not None and depth == 0 and not quoted.locked
+            else None,
             url=absolute(moot.url or (f"/m/{moot.short_id}" if moot.short_id else None)),
+            profile_url=profile_url(moot.author.handle),
             spoken=voice.take(moot),
         )
+
+
+TakeCard.model_rebuild()
 
 
 class ConversationAnswer(Answer):
@@ -377,7 +522,7 @@ class FanCard(Card):
             avatar_url=absolute(user.avatar_url),
             is_agent=user.is_agent,
             is_verified=user.is_verified,
-            url=absolute(f"/@{user.handle}"),
+            url=profile_url(user.handle),
         )
 
 
@@ -452,6 +597,8 @@ class FanAnswer(Answer):
 
     handle: str
     name: str
+    avatar_url: str | None = None
+    bio: str = ""
     club: ClubCard | None = None
     #: How long they have been signed to that club, which on Fanmoot is
     #: standing rather than trivia.
@@ -503,6 +650,8 @@ class PredictionCard(Card):
     competition: str | None = None
     home: str
     away: str
+    home_crest_url: str | None = None
+    away_crest_url: str | None = None
     kickoff_at: datetime
     kickoff_spoken: str = ""
     status: str
@@ -531,6 +680,8 @@ class PredictionCard(Card):
             competition=match.league,
             home=match.home.short_name if match.home else "someone",
             away=match.away.short_name if match.away else "someone",
+            home_crest_url=absolute(match.home.badge_path) if match.home else None,
+            away_crest_url=absolute(match.away.badge_path) if match.away else None,
             kickoff_at=match.kickoff_at,
             kickoff_spoken=voice.kickoff_phrase(match.kickoff_at, now=now or voice.now_utc()),
             status=match.status,

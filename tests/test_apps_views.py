@@ -1,4 +1,4 @@
-"""``S6-8`` — the four views, as far as Python can hold them to account.
+"""``S6-8`` — the views, as far as Python can hold them to account.
 
 **What these tests can and cannot do, stated plainly.** There is no browser
 here, so nothing below proves a crest lands in the right column. What they do
@@ -90,7 +90,7 @@ def test_a_client_that_says_nothing_about_ui_is_simply_a_client() -> None:
 
 
 # ── Linkage (S6-2 … S6-5) ────────────────────────────────────────────────────
-async def test_the_four_views_are_published_and_readable(replay: Replay, mcp_url: str) -> None:
+async def test_every_view_is_published_and_readable(replay: Replay, mcp_url: str) -> None:
     async with session_at(mcp_url) as session:
         listed = await session.list_resources()
 
@@ -100,6 +100,10 @@ async def test_the_four_views_are_published_and_readable(replay: Replay, mcp_url
         "ui://fanmoot/thread",
         "ui://fanmoot/fixtures",
         "ui://fanmoot/mood",
+        "ui://fanmoot/moot",
+        "ui://fanmoot/fan",
+        "ui://fanmoot/club",
+        "ui://fanmoot/predictions",
     }
     for uri, resource in published.items():
         assert resource.mimeType == SPEC_MIME_TYPE, uri
@@ -137,17 +141,36 @@ async def test_every_tool_with_a_view_names_one_that_exists(replay: Replay, mcp_
 
 
 async def test_only_the_tools_with_a_visual_answer_carry_one(replay: Replay, mcp_url: str) -> None:
-    """``find_club`` is a question, not a card. A view given to a tool because
-    one could be given is a view a host renders instead of speaking."""
+    """A view given to a tool because one could be given is a view a host
+    renders instead of speaking. These three are answers a person listens to."""
     listed = await surface(mcp_url)
 
     carried = {
         name for name, tool in listed.items() if (tool.meta or {}).get("ui", {}).get("resourceUri")
     }
     assert carried == set(views.TOOL_VIEWS)
-    for name in ("find_club", "find_competition", "search_fanmoot", "club_news"):
+    for name in ("find_competition", "search_fanmoot", "follow"):
         assert name in listed
         assert name not in carried
+
+
+async def test_what_a_card_does_it_does_through_a_tool_an_app_may_call(
+    replay: Replay, mcp_url: str
+) -> None:
+    """Reactions, follows and predictions are made from cards. A tool a card
+    calls without ``"app"`` in its visibility is a button the host refuses."""
+    listed = await surface(mcp_url)
+
+    for name in ("react_to_moot", "follow", "predict_match", "reply_to_moot"):
+        visibility = (listed[name].meta or {})["ui"]["visibility"]
+        assert "app" in visibility, name
+        assert "model" in visibility, name
+
+
+def test_a_tool_is_never_both_viewed_and_merely_callable() -> None:
+    """``_attach_meta`` writes the app-callable meta after the view meta, so a
+    tool in both lists would lose its ``resourceUri`` at boot."""
+    assert not set(views.TOOL_VIEWS) & set(views.APP_CALLABLE)
 
 
 async def test_the_reply_tool_is_callable_by_an_app(replay: Replay, mcp_url: str) -> None:
@@ -199,6 +222,8 @@ def test_a_view_carries_the_shared_bridge_and_stylesheet(name: str) -> None:
 
     assert "__BRIDGE_JS__" not in html
     assert "__BASE_CSS__" not in html
+    assert "__CARD_JS__" not in html
+    assert "__CARD_CSS__" not in html
     assert "__PROTOCOL__" not in html
     assert "window.fanmoot" in html
 

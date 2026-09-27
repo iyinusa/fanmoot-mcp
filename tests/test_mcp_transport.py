@@ -115,6 +115,10 @@ async def test_the_whole_surface_answers(mcp_url: str, mcp_server: FanmootMCP) -
         "ui://fanmoot/thread",
         "ui://fanmoot/fixtures",
         "ui://fanmoot/mood",
+        "ui://fanmoot/moot",
+        "ui://fanmoot/fan",
+        "ui://fanmoot/club",
+        "ui://fanmoot/predictions",
     }
     assert prompts.prompts == []
 

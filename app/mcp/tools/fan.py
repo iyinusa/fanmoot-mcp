@@ -21,7 +21,7 @@ from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
-from app import voice
+from app import untrusted, voice
 from app.fanmoot import endpoints
 from app.fanmoot.client import FanmootError
 from app.fanmoot.models import PublicProfile
@@ -30,7 +30,7 @@ from app.mcp.errors import ToolInputError
 from app.mcp.tools import common
 from app.mcp.tools.acting import Fan, refusals, signed_in, writes
 from app.mcp.tools.common import answer, icon, read_only
-from app.mcp.tools.shapes import ClubCard, FanAnswer, FollowAnswer, absolute
+from app.mcp.tools.shapes import ClubCard, FanAnswer, FollowAnswer, absolute, profile_url
 
 log = get_logger("mcp.tools.fan")
 
@@ -76,7 +76,9 @@ def register(server: FastMCP[Any]) -> None:
                     unverified=not account.email_verified,
                 ),
                 handle=account.handle,
-                name=account.name,
+                name=untrusted.clean(account.name),
+                avatar_url=absolute(account.avatar_url),
+                bio=untrusted.visible(account.bio or ""),
                 club=club,
                 season=membership.season,
                 joined_at=membership.joined_at,
@@ -85,7 +87,7 @@ def register(server: FastMCP[Any]) -> None:
                 following=profile.user.following_count if profile else 0,
                 is_verified=account.is_verified,
                 email_verified=account.email_verified,
-                url=absolute(f"/@{account.handle}"),
+                url=profile_url(account.handle),
             )
         )
 
@@ -159,7 +161,7 @@ async def _resolve_target(target: str, kind: str | None) -> tuple[str, str, str,
         handle = text.lstrip("@").strip()
         if not handle:
             raise ToolInputError("Which fan? Say their handle, like at-thegunner.")
-        return "user", handle, f"@{handle}", absolute(f"/@{handle}")
+        return "user", handle, f"@{handle}", profile_url(handle)
 
     clubs: list[str] = []
     if kind != "competition":

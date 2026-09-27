@@ -7,6 +7,14 @@ and the reason is that each one is a silent failure: a view whose ``mimeType``
 is ``text/html`` renders nowhere, a tool whose ``_meta`` key is a character out
 is a tool with no view and no error.
 
+**Where the prose and the SDK disagree, the SDK's schema wins.** Hosts do not
+read the prose; they validate with ``@modelcontextprotocol/ext-apps``'s zod
+schemas (``src/generated/schema.ts``). The prose's ``ui/initialize`` example
+names the View ``clientInfo``; the schema requires ``appInfo``, and a host
+refused the handshake — every card an empty frame in Claude — until the bridge
+said ``appInfo``. Likewise ``ui/message`` content is a *list* of blocks. The
+render harness now checks these the way the schema does.
+
 So the constants live here, alone, with the sentence from the spec that fixed
 each one:
 

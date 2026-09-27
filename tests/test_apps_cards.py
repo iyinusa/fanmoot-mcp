@@ -477,7 +477,7 @@ def test_which_one_is_answered_as_the_fan_would_type_it(rendered: Any) -> None:
 
     assert "Which one do you mean?" in text_of(result)
     said = calls(result, "ui/message")
-    assert said[0]["params"]["content"]["text"] == "I mean Aston Villa."
+    assert said[0]["params"]["content"] == [{"type": "text", "text": "I mean Aston Villa."}]
     assert not calls(result, "tools/call")
 
 

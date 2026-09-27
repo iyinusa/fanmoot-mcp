@@ -39,9 +39,40 @@
     post({ jsonrpc: '2.0', method: method, params: params || {} });
   }
 
+  /* Requests the host may send that a view must answer. `ping` is plain MCP;
+   * `ui/resource-teardown` is the host asking the view to finish up before the
+   * frame goes, and a host that never hears back waits on it. Neither needs
+   * anything from these views beyond a reply. */
+  var answers = {
+    ping: function () {
+      return {};
+    },
+    'ui/resource-teardown': function () {
+      return {};
+    },
+  };
+
   window.addEventListener('message', function (event) {
     var data = event.data;
     if (!data || data.jsonrpc !== '2.0') return;
+
+    // A message with a `method` is the host speaking first — a request or a
+    // notification. Checked before the reply table, because the host numbers
+    // its own requests and one of its ids can equal one of ours.
+    if (typeof data.method === 'string') {
+      if (data.id !== undefined) {
+        var answer = answers[data.method];
+        post(
+          answer
+            ? { jsonrpc: '2.0', id: data.id, result: answer(data.params || {}) }
+            : { jsonrpc: '2.0', id: data.id, error: { code: -32601, message: 'Method not found' } }
+        );
+        return;
+      }
+      var handler = handlers[data.method];
+      if (handler) handler(data.params || {});
+      return;
+    }
 
     if (data.id !== undefined && waiting[data.id]) {
       var pending = waiting[data.id];
@@ -51,13 +82,7 @@
       } else {
         pending.resolve(data.result);
       }
-      return;
     }
-    // A notification, or a request from the host. Unknown methods are ignored
-    // rather than answered: a view that guessed at a method it does not
-    // implement would be worse than one that stayed quiet.
-    var handler = handlers[data.method];
-    if (handler) handler(data.params || {});
   });
 
   function on(method, handler) {
@@ -128,9 +153,11 @@
 
     /** Put words in the conversation, as the person. */
     say: function (text) {
+      // A list of content blocks, as the SDK's schema has it — a single block
+      // is refused by a host that validates.
       return request('ui/message', {
         role: 'user',
-        content: { type: 'text', text: text },
+        content: [{ type: 'text', text: text }],
       });
     },
 
@@ -168,7 +195,12 @@
     request('ui/initialize', {
       protocolVersion: PROTOCOL,
       appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] },
-      clientInfo: { name: 'fanmoot-view', version: '__VERSION__' },
+      // `appInfo`, not `clientInfo`. The spec's prose example still shows
+      // `clientInfo`, but hosts validate against the ext-apps SDK schema
+      // (`McpUiInitializeRequestSchema`), which requires `appInfo` — and a host
+      // that refuses this request never sends the tool result, so the card
+      // stays an empty, zero-height frame.
+      appInfo: { name: 'fanmoot-view', version: '__VERSION__' },
     })
       .then(function (result) {
         host.capabilities = (result && result.hostCapabilities) || {};

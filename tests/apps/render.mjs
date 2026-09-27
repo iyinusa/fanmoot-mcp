@@ -150,7 +150,60 @@ function deliver(message) {
  * context, the View says initialized, the Host sends the tool input and then
  * the tool result. Anything the View asks for afterwards — `tools/call` from
  * the composer — is answered from the fixture. */
+/* What the ext-apps SDK's zod schemas require of the View's messages — the
+ * checks a real host (Claude's among them) runs before it answers. A harness
+ * that accepted anything is how `clientInfo` shipped in place of `appInfo`,
+ * and every card rendered here and nowhere else. Violations are recorded as
+ * errors, which fail the test, and the request is refused as a host would. */
+function invalid(message) {
+  const p = message.params ?? {};
+  const named = (v) => v && typeof v.name === 'string' && typeof v.version === 'string';
+  switch (message.method) {
+    case 'ui/initialize':
+      if (!named(p.appInfo)) return 'ui/initialize needs appInfo {name, version}';
+      if (typeof p.appCapabilities !== 'object' || p.appCapabilities === null)
+        return 'ui/initialize needs appCapabilities';
+      if (typeof p.protocolVersion !== 'string') return 'ui/initialize needs protocolVersion';
+      return null;
+    case 'ui/message':
+      if (p.role !== 'user') return 'ui/message role must be "user"';
+      if (!Array.isArray(p.content)) return 'ui/message content must be an array of blocks';
+      return null;
+    case 'ui/open-link':
+      return typeof p.url === 'string' ? null : 'ui/open-link needs a url';
+    case 'ui/update-model-context':
+      if (p.content !== undefined && !Array.isArray(p.content))
+        return 'ui/update-model-context content must be an array';
+      return null;
+    default:
+      return null;
+  }
+}
+
+/* A request the host sends first, after the View is up, so the test can see
+ * it answered: `ping`, `ui/resource-teardown`, or anything else in
+ * `input.hostRequests`. Numbered from 1, like the View's own — a collision
+ * is exactly what the View has to survive. */
+const answered = [];
+function hostRequests() {
+  (input.hostRequests ?? []).forEach((method, index) => {
+    deliver({ jsonrpc: '2.0', id: index + 1, method, params: {} });
+  });
+}
+
 function host(message) {
+  if (message.method === undefined && message.id !== undefined) {
+    answered.push(message);
+    return;
+  }
+  const problem = invalid(message);
+  if (problem) {
+    errors.push(problem);
+    if (message.id !== undefined) {
+      deliver({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: problem } });
+    }
+    return;
+  }
   if (message.method === 'ui/initialize') {
     deliver({
       jsonrpc: '2.0',
@@ -182,6 +235,7 @@ function host(message) {
       method: 'ui/notifications/tool-result',
       params: { content: [{ type: 'text', text: input.payload.spoken ?? '' }], structuredContent: input.payload },
     });
+    hostRequests();
     return;
   }
 
@@ -287,6 +341,7 @@ process.stdout.write(
     nodes,
     images,
     errors,
+    answered,
     theme: document.documentElement.getAttribute('data-theme'),
   })
 );

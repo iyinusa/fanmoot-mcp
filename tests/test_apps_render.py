@@ -169,10 +169,34 @@ def test_a_view_completes_the_handshake_before_it_renders(rendered: Any, view: s
 
     handshake = result["sent"][0]
     assert handshake["params"]["protocolVersion"] == "2026-01-26"
+    # `appInfo` is what the ext-apps SDK's schema requires, and what a real
+    # host validates. `clientInfo` — the spec prose's example — is refused, and
+    # a refused handshake is a card that never renders.
+    assert handshake["params"]["appInfo"]["name"] == "fanmoot-view"
+    assert "clientInfo" not in handshake["params"]
     assert handshake["params"]["appCapabilities"]["availableDisplayModes"] == [
         "inline",
         "fullscreen",
     ]
+
+
+@pytest.mark.parametrize("view", [entry.name for entry in views.VIEWS])
+def test_a_view_answers_the_requests_a_host_sends_it(rendered: Any, view: str) -> None:
+    """``ping`` and ``ui/resource-teardown`` are requests: a host waits for the
+    reply. Their ids are the host's own numbering and can equal the View's —
+    the View must answer them rather than read them as replies to itself."""
+    result = rendered(
+        view,
+        LiveAnswer(spoken="Nothing on.", matches=[], count=0),
+        hostRequests=["ping", "ui/resource-teardown", "no/such-method"],
+    )
+
+    replies = {reply["id"]: reply for reply in result["answered"]}
+    assert replies[1]["result"] == {}
+    assert replies[2]["result"] == {}
+    assert replies[3]["error"]["code"] == -32601
+    # And the View's own first request — id 1 as well — still got its answer.
+    assert "ui/notifications/initialized" in methods(result)
 
 
 @pytest.mark.parametrize("view", [entry.name for entry in views.VIEWS])

@@ -27,3 +27,14 @@ async def registry_auth() -> Response:
     if not proof:
         return PlainTextResponse("Not Found", status_code=404)
     return PlainTextResponse(proof + "\n", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/.well-known/openai-apps-challenge", include_in_schema=False)
+async def openai_apps_challenge() -> Response:
+    """The same proof for ChatGPT's app directory: the submission form's MCP tab
+    issues a token and checks this host serves it. From
+    ``FMCP_OPENAI_APPS_CHALLENGE``; unset, a 404."""
+    token = get_settings().openai_apps_challenge.strip()
+    if not token:
+        return PlainTextResponse("Not Found", status_code=404)
+    return PlainTextResponse(token, headers={"Cache-Control": "no-store"})

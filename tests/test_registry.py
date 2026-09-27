@@ -59,3 +59,21 @@ async def test_the_proof_is_served_verbatim(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert response.status_code == 200
     assert response.text.strip() == proof
+
+
+async def test_no_openai_challenge_is_a_404(client: httpx.AsyncClient) -> None:
+    assert (await client.get("/.well-known/openai-apps-challenge")).status_code == 404
+
+
+async def test_the_openai_challenge_is_served_verbatim(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.main import create_app
+
+    token = "oai-apps-challenge-example-token"
+    monkeypatch.setenv("FMCP_OPENAI_APPS_CHALLENGE", token)
+    reset_settings_cache()
+    transport = httpx.ASGITransport(app=create_app())
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as http:
+        response = await http.get("/.well-known/openai-apps-challenge")
+
+    assert response.status_code == 200
+    assert response.text == token

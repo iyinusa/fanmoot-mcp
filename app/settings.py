@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # public key. Empty serves a 404, and nothing is claimed.
     registry_auth: str = ""
 
+    # The token the OpenAI Platform's app submission hands out, served verbatim
+    # at /.well-known/openai-apps-challenge to prove this host is ours. Empty
+    # serves a 404.
+    openai_apps_challenge: str = ""
+
     # ── Upstream Fanmoot (HAD-1) ─────────────────────────────────────────────
     # The public API this server is a client of. It is never a database URL:
     # there is no path from here into Fanmoot's schema, by design.

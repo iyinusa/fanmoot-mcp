@@ -136,13 +136,26 @@ def resource_meta() -> dict[str, Any]:
     ``prefersBorder`` is false and stated rather than omitted, as the spec
     recommends, because these views draw their own card surface and a host
     frame around it is a border around a border.
+
+    ``openai/widgetDomain`` is ChatGPT's, not the spec's. ChatGPT will not
+    accept an app for submission without a unique domain per view, and sandboxes
+    the view under it. It is not written as ``ui.domain``: the spec leaves that
+    field's format to each host, and Claude validates it against its own
+    ``claudemcpcontent.com`` scheme, so a ChatGPT value there would cost the
+    views in Claude. Other hosts ignore an ``openai/`` key.
     """
     return {
         "ui": {
             "csp": {"resourceDomains": [crest_origin()]},
             "prefersBorder": False,
-        }
+        },
+        "openai/widgetDomain": widget_domain(),
     }
+
+
+def widget_domain() -> str:
+    """The origin ChatGPT sandboxes this app's views under: this server's own."""
+    return get_settings().public_base_url
 
 
 def crest_origin() -> str:

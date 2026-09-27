@@ -125,6 +125,7 @@ async def test_a_view_reads_back_as_an_html_document_with_its_csp(
     assert declared["csp"]["resourceDomains"] == [contract.crest_origin()]
     assert "connectDomains" not in declared["csp"]
     assert declared["prefersBorder"] is False
+    assert (content.meta or {})["openai/widgetDomain"] == contract.widget_domain()
 
 
 async def test_every_tool_with_a_view_names_one_that_exists(replay: Replay, mcp_url: str) -> None:

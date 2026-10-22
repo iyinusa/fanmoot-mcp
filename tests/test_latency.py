@@ -9,12 +9,17 @@ what a regression in the server would eat into.
 
 from __future__ import annotations
 
+import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
+import pytest
+
+from app import voice
 from app.mcp import telemetry
 from app.mcp.telemetry import BUDGET_MS, latency_table, percentile, render_table
-from tests.replay import Replay, fixture_body, load_manifest
+from tests.replay import FIXTURES, Replay, fixture_body, load_manifest
 from tests.tooling import session_at
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -42,9 +47,21 @@ def test_the_slowest_tool_comes_first_and_is_flagged() -> None:
     assert "FAILED by match_mood" in render_table(rows, title="t")
 
 
+def _recorded_at(path: str) -> datetime:
+    """When ``path`` was recorded, from the manifest ``make record`` wrote."""
+    entries = json.loads((FIXTURES / "manifest.json").read_text())
+    return datetime.fromisoformat(next(e["recorded_at"] for e in entries if e["path"] == path))
+
+
 async def test_the_workload_fits_the_budget_with_room_to_spare(
-    replay: Replay, mcp_url: str
+    replay: Replay, mcp_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # "arsenal" resolves to the Arsenal fixture nearest *now*. Against the wall
+    # clock that drifts off the recording as the season moves on, onto a match
+    # whose detail was never recorded. Stand where the recording was made.
+    recorded = _recorded_at("/v1/matches")
+    monkeypatch.setattr(voice, "now_utc", lambda: recorded)
+
     # `match_mood` samples forty takes; the recording holds a page of five.
     # The same five, under the key the tool asks for.
     moots = next(r for r in load_manifest() if r.path.endswith("/moots") and not r.synthetic)

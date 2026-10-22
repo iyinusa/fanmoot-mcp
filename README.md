@@ -11,6 +11,8 @@ Spec era **`2025-11-25`**, Streamable HTTP, on `POST|GET /mcp`.
 football. A fan who wants to post connects their Fanmoot account from inside
 the client.
 
+- [Try it in five minutes](#try-it-in-five-minutes) —
+  one Docker command, no keys
 - [Connect a client](#connect-a-client) — Claude, ChatGPT, Cursor, VS Code, the
   Inspector, `curl`, and Alexa+
 - [How it is built](#how-it-is-built) — architecture and the OAuth flow
@@ -19,24 +21,72 @@ the client.
 - [Operating it](docs/runbook.md) — deploy, roll back, rotate keys, the latency
   budget
 
-## Sixty seconds
+## Try it in five minutes
+
+You need **Docker** and nothing else. No account, no keys and no database
+setup.
+
+**1. Run it.**
 
 ```bash
-claude mcp add --transport http fanmoot https://mcp.fanmoot.com/mcp
+git clone https://github.com/iyinusa/fanmoot-mcp.git
+cd fanmoot-mcp
+docker compose -f docker-compose.local.yml up --build     # or: make local
+```
+
+This starts the server and its own PostgreSQL. It is ready when the log says
+`Uvicorn running on http://0.0.0.0:8080`. Stop it with `Ctrl-C`. Nothing is
+kept on disk.
+
+**2. Check it.** In a second terminal:
+
+```bash
+curl -s localhost:8080/healthz
+```
+
+You should see `"status": "ok"`, `"mcp_protocol_version": "2025-11-25"` and
+every check `ok`.
+
+**3. Talk to it.** Pick whichever MCP client you have:
+
+```bash
+# MCP Inspector (needs Node.js): a web UI to list and call every tool
+npx @modelcontextprotocol/inspector --transport http --server-url http://localhost:8080/mcp
+
+# Claude Code
+claude mcp add --transport http fanmoot-local http://localhost:8080/mcp
 ```
 
 Then ask *"what's on in the Premier League this weekend?"* or *"what are fans
-saying about the Arsenal game?"*. Ask it to *"post that the second goal was
-offside"* and your client opens a Fanmoot sign-in page. Sign in or create an
-account, tick what it may do, and the take goes out under your handle.
+saying about the Arsenal game?"*. The answers are real: the server reads the
+live public API at fanmoot.com. Or skip the client and use plain HTTP (see
+[Plain HTTP](#plain-http)).
 
-Running it yourself:
+**4. Try the sign-in.** Ask the client to *"post that the second goal was
+offside"*. The tool answers **401**, and your client opens a Fanmoot sign-in
+page served by this server. Sign in, or create an account, and tick what the
+client may do. The take then posts to **the real fanmoot.com** under your own
+handle.
+
+**5. Run the tests** (optional, needs [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-make install && cp .env.example .env    # set FMCP_DATABASE_URL and FMCP_SECRET_ENCRYPTION_KEY
-make migrate && make dev                # http://localhost:8080/mcp
-make inspect                            # MCP Inspector, already pointed at it
+make install && make test     # offline: no network, no database
 ```
+
+**No Docker?** Use the deployed server, which runs the same code:
+`https://mcp.fanmoot.com/mcp`. Paste it into any client in
+[Connect a client](#connect-a-client).
+
+### What works locally, and what needs extra setup
+
+| | Locally, with no setup | Notes |
+|---|---|---|
+| All 12 read tools | Yes | Live data from fanmoot.com |
+| Sign-in, sign-up and the 7 tools that act as the fan | Yes | A throwaway encryption key is made at start. Posts go to the real fanmoot.com |
+| MCP Apps cards (`ui://` views) | Yes | Shown by clients that support MCP Apps, such as Claude and ChatGPT |
+| `match_mood` with Amazon Bedrock | Only with AWS keys | Without keys it uses its offline lexicon and says `"method": "lexicon"`. To use Bedrock, export `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (with Nova Lite access in `us-east-1`) before step 1 |
+| Alexa+ itself | No | The Alexa+ toolkit is not available to participants. See [Alexa+](#alexa) |
 
 ## What it talks to
 
@@ -222,19 +272,24 @@ safe direction, and `/healthz` reports it as `grant_storage: disabled`.
 
 ## Run it locally
 
+The quickest way is the one in [Above](#try-it-in-five-minutes):
+`docker compose -f docker-compose.local.yml up --build`, which brings its own
+PostgreSQL.
+
+For development, with your own PostgreSQL:
+
 ```bash
-make install          # uv venv + dependencies
-cp .env.example .env  # then set FMCP_DATABASE_URL
+make install          # uv venv + dependencies (Python 3.12)
+cp .env.example .env  # then set FMCP_DATABASE_URL and FMCP_SECRET_ENCRYPTION_KEY
 make migrate
 make dev              # http://localhost:8080
 ```
 
-Or in Docker, which is what production runs:
+`FMCP_SECRET_ENCRYPTION_KEY` is a Fernet key. Make one with
+`python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 
-```bash
-make up               # docker-compose.yml + docker-compose.dev.yml
-curl -s localhost:8080/healthz | python3 -m json.tool
-```
+`make up` runs the production image with the development overlay
+(`docker-compose.yml` + `docker-compose.dev.yml`), using the database in `.env`.
 
 `make check` is what CI runs — `ruff`, `mypy --strict`, `pytest`. A milestone
 task is ticked only when it passes.
@@ -524,6 +579,32 @@ What the server keeps, and for how long, is at
 rendered from the constants that enforce them. Terms are at
 [`/terms`](https://mcp.fanmoot.com/terms).
 
-## Licence
+## Licence and third-party notices
 
-MIT. See [LICENSE](LICENSE).
+**The code is MIT-licensed.** See [LICENSE](LICENSE). You may use, copy,
+change and share it, including commercially, as long as the licence notice
+stays with it.
+
+The MIT licence covers the code in this repository only. It does not cover
+the following, which belong to others:
+
+- **Club crests.** The server returns crest image URLs from fanmoot.com, and
+  its cards show them, **only to identify the clubs in a fixture or the club a
+  fan supports**. Fanmoot gets them through the official logo endpoint of
+  [API-Football](https://www.api-football.com/) (api-sports.io), whose terms
+  provide logos to API customers and recommend storing them rather than
+  hotlinking. API-Sports claims no rights in the logos. Crests are trademarks
+  of their clubs and leagues, and Fanmoot claims no ownership of any of them.
+  Every club also has a monogram badge generated by Fanmoot, and any crest is
+  replaced by its monogram on request from its rights holder.
+- **Names.** Club, player and competition names are used only to identify
+  them.
+- **Alexa and Alexa+** are trademarks of Amazon.com, Inc.
+- **Fans' posts** are their authors' own, shown under Fanmoot's
+  [terms](https://mcp.fanmoot.com/terms).
+- **The Fanmoot name and logo** in `app/static/brand/` are Fanmoot's own
+  marks. They are included so the server renders correctly, and are not
+  covered by the MIT licence.
+
+This project is not affiliated with, endorsed by or certified by Amazon, any
+club or any league.

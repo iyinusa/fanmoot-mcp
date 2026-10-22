@@ -14,7 +14,7 @@ COMPOSE := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 MCP_URL ?= http://127.0.0.1:8080/mcp
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev test lint fmt types check inspect migrate revision downgrade record verify-live latency smoke rotate-keys build up down logs shell clean
+.PHONY: help local install dev test lint fmt types check inspect migrate revision downgrade record verify-live latency smoke rotate-keys build up down logs shell clean
 
 help:  ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -78,6 +78,9 @@ rotate-keys:  ## Re-wrap stored Fanmoot sessions under the newest key (S7-4, doc
 
 build:  ## Build the Docker image
 	docker build -t fanmoot-mcp:local .
+
+local:  ## Run the server and its own PostgreSQL on :8080 — nothing to configure
+	docker compose -f docker-compose.local.yml up --build
 
 up:  ## Start the stack with the dev overlay
 	@docker network inspect dokploy-network >/dev/null 2>&1 \

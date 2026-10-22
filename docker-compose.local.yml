@@ -1,0 +1,56 @@
+# Run the whole server on one machine, with nothing to configure.
+#
+#   docker compose -f docker-compose.local.yml up --build     # or: make local
+#
+# This is the file for anyone trying the server from a fresh clone, judges
+# included. It is standalone: no `.env`, no `dokploy-network`, no database to
+# provision. Production uses docker-compose.yml, which this file never touches.
+#
+# - PostgreSQL comes with it, on tmpfs, so every start is clean and nothing is
+#   left on disk afterwards.
+# - Fanmoot itself is the live public API at https://fanmoot.com, so the read
+#   tools answer with real fixtures, scores and match threads.
+# - If FMCP_SECRET_ENCRYPTION_KEY is not set, a throwaway key is generated at
+#   start, so sign-in and posting work too. A fan who signs in here posts to
+#   the real fanmoot.com under their own account.
+# - match_mood uses Bedrock if AWS credentials are in the shell, and its
+#   offline lexicon otherwise.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fanmoot
+      POSTGRES_PASSWORD: fanmoot
+      POSTGRES_DB: fanmoot_mcp
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fanmoot -d fanmoot_mcp"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  mcp:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      FMCP_ENV: development
+      FMCP_PUBLIC_BASE_URL: http://localhost:8080
+      FMCP_FANMOOT_API_BASE_URL: https://fanmoot.com
+      FMCP_DATABASE_URL: postgresql+asyncpg://fanmoot:fanmoot@db:5432/fanmoot_mcp
+      FMCP_SECRET_ENCRYPTION_KEY: ${FMCP_SECRET_ENCRYPTION_KEY:-}
+      FMCP_BEDROCK_REGION: ${FMCP_BEDROCK_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+    command: >
+      sh -c '
+      export FMCP_SECRET_ENCRYPTION_KEY="$${FMCP_SECRET_ENCRYPTION_KEY:-$$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")}" &&
+      alembic upgrade head &&
+      exec uvicorn app.main:app --host 0.0.0.0 --port 8080
+      '
